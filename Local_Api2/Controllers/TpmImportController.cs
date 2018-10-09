@@ -19,7 +19,7 @@ namespace Local_Api2.Controllers
         [ResponseType(typeof(Process))]
         public IHttpActionResult CreateTpmEntry(Process p)
         {
-            string ConStr = ConfigurationManager.ConnectionStrings["OracleConnectionString"].ConnectionString;
+            string ConStr = Static.Secrets.OracleConnectionString;
             var Con = new Oracle.ManagedDataAccess.Client.OracleConnection(ConStr);
 
             if (Con.State == System.Data.ConnectionState.Closed)
@@ -56,7 +56,7 @@ namespace Local_Api2.Controllers
         [ResponseType(typeof(Process))]
         public IHttpActionResult CreateTestEntry(Process p)
         {
-            string ConStr = ConfigurationManager.ConnectionStrings["OracleConnectionString"].ConnectionString;
+            string ConStr = Static.Secrets.OracleConnectionString;
             var Con = new Oracle.ManagedDataAccess.Client.OracleConnection(ConStr);
 
             if (Con.State == System.Data.ConnectionState.Closed)
@@ -83,7 +83,7 @@ namespace Local_Api2.Controllers
         [ResponseType(typeof(Process))]
         public IHttpActionResult GetEntry(string id)
         {
-            string ConStr = ConfigurationManager.ConnectionStrings["OracleConnectionString"].ConnectionString;
+            string ConStr = Static.Secrets.OracleConnectionString;
             var Con = new Oracle.ManagedDataAccess.Client.OracleConnection(ConStr);
 
             if (Con.State == System.Data.ConnectionState.Closed)
