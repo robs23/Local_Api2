@@ -65,10 +65,10 @@ namespace Local_Api2.Controllers
             }
 
 
-            string iStr = @"INSERT INTO ifc.qmes_tpm_repairs_imp (order_nr, manager_nr, closemean_nr, initial_diagnosis, repair_actions, STATUS) 
-                            VALUES ('{0}','{1}','{2}','{3}', '{4}', '{5}')";
+            string iStr = @"INSERT INTO ifc.qmes_tpm_repairs_imp (order_nr, manager_nr, closemean_nr, initial_diagnosis, repair_actions, STATUS, IS_ADJUSTMENT) 
+                            VALUES ('{0}','{1}','{2}','{3}', '{4}', '{5}','{6}')";
 
-            iStr = string.Format(iStr, p.Number, p.Manager, p.FinishedBy, p.InitialDiagnosis, p.RepairActions, p.Status);
+            iStr = string.Format(iStr, p.Number, p.Manager, p.FinishedBy, p.InitialDiagnosis, p.RepairActions, p.Status,p.IsAdjustment);
 
             var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(iStr, Con);
 
@@ -112,6 +112,7 @@ namespace Local_Api2.Controllers
                     p.InitialDiagnosis = reader[reader.GetOrdinal("initial_diagnosis")].ToString();
                     p.RepairActions = reader[reader.GetOrdinal("repair_actions")].ToString();
                     p.Status = reader[reader.GetOrdinal("STATUS")].ToString();
+                    p.IsAdjustment = reader[reader.GetOrdinal("IS_ADJUSTMENT")].ToString();
                 }
                 return Ok(p);
             }
