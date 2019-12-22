@@ -28,8 +28,8 @@ namespace Local_Api2.Controllers
             }
 
 
-            string iStr = @"INSERT INTO ifc.qmes_tpm_repairs_imp (order_nr, manager_nr, start_date, closemean_nr, end_date, initial_diagnosis, repair_actions, STATUS) 
-                            VALUES (:TheNumber, :Manager, :StartDate, :FinishedBy, :EndDate, :InitialDiagnosis, :RepairActions, :Status)";
+            string iStr = @"INSERT INTO ifc.qmes_tpm_repairs_imp (order_nr, manager_nr, start_date, closemean_nr, end_date, initial_diagnosis, repair_actions, STATUS, IS_ADJUSTMENT) 
+                            VALUES (:TheNumber, :Manager, :StartDate, :FinishedBy, :EndDate, :InitialDiagnosis, :RepairActions, :Status, :IS_ADJUSTMENT)";
 
             var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(iStr, Con);
 
@@ -42,7 +42,8 @@ namespace Local_Api2.Controllers
                 new OracleParameter("EndDate", p.EndDate),
                 new OracleParameter("InitialDiagnosis", p.InitialDiagnosis),
                 new OracleParameter("RepairActions", p.RepairActions),
-                new OracleParameter("Status", p.Status)
+                new OracleParameter("Status", p.Status),
+                new OracleParameter("IS_ADJUSTMENT", p.IsAdjustment)
             };
             Command.Parameters.AddRange(parameters);
             Command.ExecuteNonQuery();
