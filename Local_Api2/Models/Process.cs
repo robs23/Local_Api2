@@ -16,5 +16,7 @@ namespace Local_Api2.Models
         public string RepairActions { get; set; }
         public string Status { get; set; }
         public string IsAdjustment { get; set; }
+        public string ReasonCode2 { get; set; }
+        public string ReasonCode3 { get; set; }
     }
 }

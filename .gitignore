@@ -260,3 +260,4 @@ paket-files/
 __pycache__/
 *.pyc
 /Local_Api2/Static/Secrets.cs
+/codealike.json

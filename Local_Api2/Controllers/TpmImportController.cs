@@ -28,8 +28,8 @@ namespace Local_Api2.Controllers
             }
 
 
-            string iStr = @"INSERT INTO ifc.qmes_tpm_repairs_imp (order_nr, manager_nr, start_date, closemean_nr, end_date, initial_diagnosis, repair_actions, STATUS, IS_ADJUSTMENT) 
-                            VALUES (:TheNumber, :Manager, :StartDate, :FinishedBy, :EndDate, :InitialDiagnosis, :RepairActions, :Status, :IS_ADJUSTMENT)";
+            string iStr = @"INSERT INTO ifc.qmes_tpm_repairs_imp (order_nr, manager_nr, start_date, closemean_nr, end_date, initial_diagnosis, repair_actions, STATUS, IS_ADJUSTMENT, REASONCODE2, REASONCODE3) 
+                            VALUES (:TheNumber, :Manager, :StartDate, :FinishedBy, :EndDate, :InitialDiagnosis, :RepairActions, :Status, :IS_ADJUSTMENT, :REASONCODE2, :REASONCODE3)";
 
             var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(iStr, Con);
 
@@ -43,7 +43,9 @@ namespace Local_Api2.Controllers
                 new OracleParameter("InitialDiagnosis", p.InitialDiagnosis),
                 new OracleParameter("RepairActions", p.RepairActions),
                 new OracleParameter("Status", p.Status),
-                new OracleParameter("IS_ADJUSTMENT", p.IsAdjustment)
+                new OracleParameter("IS_ADJUSTMENT", p.IsAdjustment),
+                new OracleParameter("REASONCODE2", p.ReasonCode2),
+                new OracleParameter("REASONCODE3", p.ReasonCode3)
             };
             Command.Parameters.AddRange(parameters);
             Command.ExecuteNonQuery();
@@ -114,6 +116,8 @@ namespace Local_Api2.Controllers
                     p.RepairActions = reader[reader.GetOrdinal("repair_actions")].ToString();
                     p.Status = reader[reader.GetOrdinal("STATUS")].ToString();
                     p.IsAdjustment = reader[reader.GetOrdinal("IS_ADJUSTMENT")].ToString();
+                    p.ReasonCode2 = reader[reader.GetOrdinal("REASONCODE2")].ToString();
+                    p.ReasonCode3 = reader[reader.GetOrdinal("REASONCODE3")].ToString();
                 }
                 return Ok(p);
             }
