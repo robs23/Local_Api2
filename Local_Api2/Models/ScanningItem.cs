@@ -11,8 +11,9 @@ namespace Local_Api2.Models
         public int ScanningHour { get; set; }
         public DateTime Date { get; set; }
         public int Quantity { get; set; }
-        public float QuantityKg { get; set; }
+        public double QuantityKg { get; set; }
         public int Speed { get; set; }
         public int EanType { get; set; }
+        public int ChangeOvers { get; set; }
     }
 }
