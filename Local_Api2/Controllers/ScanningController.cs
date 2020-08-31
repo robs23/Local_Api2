@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Cors;
 using System.Web.Http.Description;
@@ -22,7 +23,7 @@ namespace Local_Api2.Controllers
         [Route("GetRecentScans")]
         [ResponseType(typeof(List<ScanningItem>))]
 
-        public IHttpActionResult GetRecentScans(int MachineId, int? EanType = null)
+        public IHttpActionResult GetRecentScans(int MachineId)
         {
             if (RuntimeSettings.MockServer)
             {
@@ -46,41 +47,7 @@ namespace Local_Api2.Controllers
             }
             else
             {
-                if (Con.State == System.Data.ConnectionState.Closed)
-                {
-                    Con.Open();
-                }
-
-                string EanTypeString = "";
-                if (EanType == null)
-                {
-                    EanTypeString = "(scan.EAN_TYPE = 2 OR scan.EAN_TYPE = 3)";
-                }
-                else
-                {
-                    EanTypeString = $"(scan.EAN_TYPE = {EanType})";
-                }
-
-                string str = $@"SELECT        scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24') AS SCAN_HOUR, to_char(scan.C_DATE, 'YYYY-MM-DD') AS SCAN_DAY, SUM(scan.SCAN_COUNT) AS QUANTITY, uom.WEIGHT_NETTO, SUM(scan.ERROR_COUNT) AS ERROR, 
-                            scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR
-                            FROM QMES_WIP_SCAN_COUNT scan LEFT OUTER JOIN
-                            QMES_WIP_OPERATION_QTY op_qty ON op_qty.OPERATION_ID = scan.OPERATION_ID LEFT OUTER JOIN
-                            QCM_PRODUCTS prod ON prod.PRODUCT_ID = op_qty.PRODUCT_ID LEFT OUTER JOIN
-                            QCM_PACKAGE_HEADERS pack ON pack.PRODUCT_ID = prod.PRODUCT_ID LEFT OUTER JOIN
-                            QCM_PACKAGE_LEVELS uom ON uom.PACKAGE_ID = pack.PACKAGE_ID
-                            WHERE (scan.C_DATE >= :StartDate) AND (scan.MACHINE_ID = {MachineId}) AND {EanTypeString} AND (uom.LEVEL_NR = 0)
-                            GROUP BY scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24'), to_char(scan.C_DATE, 'YYYY-MM-DD'), scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, uom.WEIGHT_NETTO
-                            ORDER BY SCAN_DAY DESC, SCAN_HOUR DESC";
-
-                var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
-
-                OracleParameter[] parameters = new OracleParameter[]
-            {
-                new OracleParameter("StartDate", DateTime.Now.AddDays(-1)),
-            };
-                Command.Parameters.AddRange(parameters);
-
-                var reader = Command.ExecuteReader();
+                var reader = GetRecentFoilScans(MachineId);
 
                 List<ScanningItem> Scans = new List<ScanningItem>();
                 int index = 0;
@@ -97,9 +64,10 @@ namespace Local_Api2.Controllers
                         int currentQty = Convert.ToInt32(reader[reader.GetOrdinal("QUANTITY")].ToString());
                         double currentQtyKg = Convert.ToDouble(reader[reader.GetOrdinal("WEIGHT_NETTO")].ToString()) * currentQty;
                         int currentMinutes = 60;
-                        if(currentDate == DateTime.Now.Date && currentHour == DateTime.Now.Hour)
+                        if (currentDate == DateTime.Now.Date && currentHour == DateTime.Now.Hour)
                         {
                             currentMinutes = DateTime.Now.Minute;
+                            if (currentMinutes == 0) { currentMinutes = 1; }
                         }
                         if (prevHour == currentHour)
                         {
@@ -136,5 +104,64 @@ namespace Local_Api2.Controllers
             }
         }
 
+        private OracleDataReader GetRecentBoxesScans(int MachineId)
+        {
+            if (Con.State == System.Data.ConnectionState.Closed)
+            {
+                Con.Open();
+            }
+
+            string str = $@"SELECT        scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24') AS SCAN_HOUR, to_char(scan.C_DATE, 'YYYY-MM-DD') AS SCAN_DAY, SUM(scan.SCAN_COUNT) AS QUANTITY, uom.BU_QUANTITY, SUM(scan.ERROR_COUNT) AS ERROR, 
+                            scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR
+                            FROM QMES_WIP_SCAN_COUNT scan LEFT OUTER JOIN
+                            QMES_WIP_OPERATION_QTY op_qty ON op_qty.OPERATION_ID = scan.OPERATION_ID LEFT OUTER JOIN
+                            QCM_PRODUCTS prod ON prod.PRODUCT_ID = op_qty.PRODUCT_ID LEFT OUTER JOIN
+                            QCM_PACKAGE_HEADERS pack ON pack.PRODUCT_ID = prod.PRODUCT_ID LEFT OUTER JOIN
+                            QCM_PACKAGE_LEVELS uom ON uom.PACKAGE_ID = pack.PACKAGE_ID
+                            WHERE (scan.C_DATE >= :StartDate) AND (scan.MACHINE_ID = {MachineId}) AND (scan.EAN_TYPE=1) AND (uom.LEVEL_NR = 1)
+                            GROUP BY scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24'), to_char(scan.C_DATE, 'YYYY-MM-DD'), scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, uom.BU_QUANTITY
+                            ORDER BY SCAN_DAY DESC, SCAN_HOUR DESC";
+
+            var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
+
+            OracleParameter[] parameters = new OracleParameter[]
+            {
+                new OracleParameter("StartDate", DateTime.Now.AddDays(-1)),
+            };
+            Command.Parameters.AddRange(parameters);
+
+            var reader = Command.ExecuteReader();
+            return reader;
+        }
+
+        private OracleDataReader GetRecentFoilScans(int MachineId)
+        {
+            if (Con.State == System.Data.ConnectionState.Closed)
+            {
+                Con.Open();
+            }
+
+            string str = $@"SELECT        scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24') AS SCAN_HOUR, to_char(scan.C_DATE, 'YYYY-MM-DD') AS SCAN_DAY, SUM(scan.SCAN_COUNT) AS QUANTITY, uom.WEIGHT_NETTO, SUM(scan.ERROR_COUNT) AS ERROR, 
+                            scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR
+                            FROM QMES_WIP_SCAN_COUNT scan LEFT OUTER JOIN
+                            QMES_WIP_OPERATION_QTY op_qty ON op_qty.OPERATION_ID = scan.OPERATION_ID LEFT OUTER JOIN
+                            QCM_PRODUCTS prod ON prod.PRODUCT_ID = op_qty.PRODUCT_ID LEFT OUTER JOIN
+                            QCM_PACKAGE_HEADERS pack ON pack.PRODUCT_ID = prod.PRODUCT_ID LEFT OUTER JOIN
+                            QCM_PACKAGE_LEVELS uom ON uom.PACKAGE_ID = pack.PACKAGE_ID
+                            WHERE (scan.C_DATE >= :StartDate) AND (scan.MACHINE_ID = {MachineId}) AND (scan.EAN_TYPE=2) AND (uom.LEVEL_NR = 0)
+                            GROUP BY scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24'), to_char(scan.C_DATE, 'YYYY-MM-DD'), scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, uom.WEIGHT_NETTO
+                            ORDER BY SCAN_DAY DESC, SCAN_HOUR DESC";
+
+            var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
+
+            OracleParameter[] parameters = new OracleParameter[]
+            {
+                new OracleParameter("StartDate", DateTime.Now.AddDays(-1)),
+            };
+            Command.Parameters.AddRange(parameters);
+
+            var reader = Command.ExecuteReader();
+            return reader;
+        }
     }
 }
