@@ -64,6 +64,7 @@ namespace Local_Api2.Controllers
                         int currentQty = Convert.ToInt32(reader[reader.GetOrdinal("QUANTITY")].ToString());
                         double currentQtyKg = Convert.ToDouble(reader[reader.GetOrdinal("WEIGHT_NETTO")].ToString()) * currentQty;
                         int currentMinutes = 60;
+                        int efficiency = Convert.ToInt32(reader[reader.GetOrdinal("EFFICIENCY")].ToString());
                         if (currentDate == DateTime.Now.Date && currentHour == DateTime.Now.Hour)
                         {
                             currentMinutes = DateTime.Now.Minute;
@@ -78,6 +79,7 @@ namespace Local_Api2.Controllers
                                 _s.QuantityKg += currentQtyKg;
                                 _s.Speed = _s.Quantity / currentMinutes;
                                 _s.ChangeOvers++;
+                                _s.AssumedSpeed = (_s.AssumedSpeed +(efficiency / 60))/(_s.ChangeOvers+1);
                             }
                         }
                         else
@@ -90,10 +92,26 @@ namespace Local_Api2.Controllers
                             i.QuantityKg = currentQtyKg;
                             i.Speed = i.Quantity / currentMinutes;
                             i.EanType = Convert.ToInt32(reader[reader.GetOrdinal("EAN_TYPE")].ToString());
+                            i.AssumedSpeed = efficiency / 60;
                             Scans.Add(i);
                         }
                         prevHour = currentHour;
                         
+                    }
+
+                    var readerB = GetRecentBoxesScans(MachineId);
+                    if (readerB.HasRows)
+                    {
+                        while (readerB.Read())
+                        {
+                            currentHour = Convert.ToInt32(readerB[readerB.GetOrdinal("SCAN_HOUR")].ToString());
+                            DateTime currentDate = DateTime.ParseExact(readerB[readerB.GetOrdinal("SCAN_DAY")].ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                            if(Scans.Any(s=> s.Date==currentDate && s.ScanningHour == currentHour))
+                            {
+                                //update item with data from boxes scanner
+                                Scans.Where(s => s.Date == currentDate && s.ScanningHour == currentHour).FirstOrDefault().QuantityFromBoxes += (Convert.ToInt32(readerB[readerB.GetOrdinal("QUANTITY")].ToString()) * Convert.ToInt32(readerB[readerB.GetOrdinal("BU_QUANTITY")].ToString())); 
+                            }
+                        }
                     }
                     return Ok(Scans);
                 }
@@ -141,16 +159,18 @@ namespace Local_Api2.Controllers
                 Con.Open();
             }
 
+
             string str = $@"SELECT        scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24') AS SCAN_HOUR, to_char(scan.C_DATE, 'YYYY-MM-DD') AS SCAN_DAY, SUM(scan.SCAN_COUNT) AS QUANTITY, uom.WEIGHT_NETTO, SUM(scan.ERROR_COUNT) AS ERROR, 
-                            scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR
-                            FROM QMES_WIP_SCAN_COUNT scan LEFT OUTER JOIN
-                            QMES_WIP_OPERATION_QTY op_qty ON op_qty.OPERATION_ID = scan.OPERATION_ID LEFT OUTER JOIN
-                            QCM_PRODUCTS prod ON prod.PRODUCT_ID = op_qty.PRODUCT_ID LEFT OUTER JOIN
-                            QCM_PACKAGE_HEADERS pack ON pack.PRODUCT_ID = prod.PRODUCT_ID LEFT OUTER JOIN
-                            QCM_PACKAGE_LEVELS uom ON uom.PACKAGE_ID = pack.PACKAGE_ID
-                            WHERE (scan.C_DATE >= :StartDate) AND (scan.MACHINE_ID = {MachineId}) AND (scan.EAN_TYPE=2) AND (uom.LEVEL_NR = 0)
-                            GROUP BY scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24'), to_char(scan.C_DATE, 'YYYY-MM-DD'), scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, uom.WEIGHT_NETTO
-                            ORDER BY SCAN_DAY DESC, SCAN_HOUR DESC";
+                         scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, CAST(ef.EFFICIENCY AS INT) AS EFFICIENCY 
+                         FROM QMES_WIP_SCAN_COUNT scan LEFT OUTER JOIN
+                         QMES_WIP_OPERATION_QTY op_qty ON op_qty.OPERATION_ID = scan.OPERATION_ID LEFT OUTER JOIN
+                         QCM_PRODUCTS prod ON prod.PRODUCT_ID = op_qty.PRODUCT_ID LEFT OUTER JOIN
+                         QCM_PACKAGE_HEADERS pack ON pack.PRODUCT_ID = prod.PRODUCT_ID LEFT OUTER JOIN
+                         QCM_PACKAGE_LEVELS uom ON uom.PACKAGE_ID = pack.PACKAGE_ID LEFT OUTER JOIN
+                         QMES_FO_MACHINE_EFFICIENCY ef ON ef.MACHINE_ID = scan.MACHINE_ID AND ef.PRODUCT_ID = op_qty.PRODUCT_ID
+                         WHERE (scan.C_DATE >= :StartDate) AND (scan.MACHINE_ID = {MachineId}) AND (scan.EAN_TYPE=2) AND (uom.LEVEL_NR = 0)
+                         GROUP BY scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24'), to_char(scan.C_DATE, 'YYYY-MM-DD'), scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, uom.WEIGHT_NETTO, ef.EFFICIENCY
+                         ORDER BY SCAN_DAY DESC, SCAN_HOUR DESC";
 
             var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
 
