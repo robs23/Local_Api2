@@ -16,7 +16,7 @@ namespace Local_Api2.Controllers
     [EnableCors(origins: "*", headers: "*", methods: "*")]
     public class MachinesController : ApiController
     {
-        private OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString);
+        
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         [HttpGet]
@@ -40,45 +40,49 @@ namespace Local_Api2.Controllers
                 }
                 else
                 {
-                    if (Con.State == System.Data.ConnectionState.Closed)
+                    using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString))
                     {
-                        Con.Open();
-                    }
+                        if (Con.State == System.Data.ConnectionState.Closed)
+                        {
+                            Con.Open();
+                        }
 
-                    string str = @"SELECT MACHINE_ID, MACHINE_NR, STATE, MACHINE_TYPE_ID, IS_VISIBLE_APS 
+                        string str = @"SELECT MACHINE_ID, MACHINE_NR, STATE, MACHINE_TYPE_ID, IS_VISIBLE_APS 
                             FROM QMES_FO_MACHINE 
                             ORDER BY MACHINE_NR";
 
-                    var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
+                        var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
 
-                    var reader = Command.ExecuteReader();
+                        var reader = Command.ExecuteReader();
 
-                    List<Machine> Machines = new List<Machine>();
+                        List<Machine> Machines = new List<Machine>();
 
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
+                        if (reader.HasRows)
                         {
-                            Machine m = new Machine();
-                            m.Id = Convert.ToInt32(reader[reader.GetOrdinal("MACHINE_ID")].ToString());
-                            m.Name = reader[reader.GetOrdinal("MACHINE_NR")].ToString();
-                            m.State = reader[reader.GetOrdinal("STATE")].ToString();
-                            m.Type = Convert.ToInt32(reader[reader.GetOrdinal("MACHINE_TYPE_ID")].ToString());
-                            m.VisibleInAPS = reader[reader.GetOrdinal("IS_VISIBLE_APS")].ToString() == "T" ? true : false;
-                            Machines.Add(m);
+                            while (reader.Read())
+                            {
+                                Machine m = new Machine();
+                                m.Id = Convert.ToInt32(reader[reader.GetOrdinal("MACHINE_ID")].ToString());
+                                m.Name = reader[reader.GetOrdinal("MACHINE_NR")].ToString();
+                                m.State = reader[reader.GetOrdinal("STATE")].ToString();
+                                m.Type = Convert.ToInt32(reader[reader.GetOrdinal("MACHINE_TYPE_ID")].ToString());
+                                m.VisibleInAPS = reader[reader.GetOrdinal("IS_VISIBLE_APS")].ToString() == "T" ? true : false;
+                                Machines.Add(m);
+                            }
+                            if (Type != null)
+                                Machines = Machines.Where(m => m.Type == (int)Type).ToList();
+                            if (VisibleInAPS != null)
+                                Machines = Machines.Where(m => m.VisibleInAPS == (bool)VisibleInAPS).ToList();
+                            Logger.Info("GetMachines: Sukces, zwracam {count} maszyn", Machines.Count);
+                            return Ok(Machines);
                         }
-                        if (Type != null)
-                            Machines = Machines.Where(m => m.Type == (int)Type).ToList();
-                        if (VisibleInAPS != null)
-                            Machines = Machines.Where(m => m.VisibleInAPS == (bool)VisibleInAPS).ToList();
-                        Logger.Info("GetMachines: Sukces, zwracam {count} maszyn", Machines.Count);
-                        return Ok(Machines);
+                        else
+                        {
+                            Logger.Info("GetMachines: Porażka, nie znaleziono maszyn.");
+                            return NotFound();
+                        }
                     }
-                    else
-                    {
-                        Logger.Info("GetMachines: Porażka, nie znaleziono maszyn.");
-                        return NotFound();
-                    }
+                    
                 }
             }
             catch (Exception ex)
@@ -103,38 +107,42 @@ namespace Local_Api2.Controllers
                 }
                 else
                 {
-                    if (Con.State == System.Data.ConnectionState.Closed)
+                    using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString))
                     {
-                        Con.Open();
-                    }
+                        if (Con.State == System.Data.ConnectionState.Closed)
+                        {
+                            Con.Open();
+                        }
 
-                    string str = $@"SELECT MACHINE_ID, MACHINE_NR, STATE, MACHINE_TYPE_ID, IS_VISIBLE_APS 
+                        string str = $@"SELECT MACHINE_ID, MACHINE_NR, STATE, MACHINE_TYPE_ID, IS_VISIBLE_APS 
                             FROM QMES_FO_MACHINE 
                             WHERE MACHINE_ID = {Id}";
 
-                    var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
+                        var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
 
-                    var reader = Command.ExecuteReader();
+                        var reader = Command.ExecuteReader();
 
-                    if (reader.HasRows)
-                    {
-                        Machine m = new Machine();
-                        while (reader.Read())
+                        if (reader.HasRows)
                         {
-                            m.Id = Convert.ToInt32(reader[reader.GetOrdinal("MACHINE_ID")].ToString());
-                            m.Name = reader[reader.GetOrdinal("MACHINE_NR")].ToString();
-                            m.State = reader[reader.GetOrdinal("STATE")].ToString();
-                            m.Type = Convert.ToInt32(reader[reader.GetOrdinal("MACHINE_TYPE_ID")].ToString());
-                            m.VisibleInAPS = reader[reader.GetOrdinal("IS_VISIBLE_APS")].ToString() == "T" ? true : false;
+                            Machine m = new Machine();
+                            while (reader.Read())
+                            {
+                                m.Id = Convert.ToInt32(reader[reader.GetOrdinal("MACHINE_ID")].ToString());
+                                m.Name = reader[reader.GetOrdinal("MACHINE_NR")].ToString();
+                                m.State = reader[reader.GetOrdinal("STATE")].ToString();
+                                m.Type = Convert.ToInt32(reader[reader.GetOrdinal("MACHINE_TYPE_ID")].ToString());
+                                m.VisibleInAPS = reader[reader.GetOrdinal("IS_VISIBLE_APS")].ToString() == "T" ? true : false;
+                            }
+                            Logger.Info("GetMachines: Sukces, zwracam maszynę {Id}", m.Id);
+                            return Ok(m);
                         }
-                        Logger.Info("GetMachines: Sukces, zwracam maszynę {Id}", m.Id);
-                        return Ok(m);
+                        else
+                        {
+                            Logger.Info("GetMachines: Porażka, nie znaleziono maszyny {Id}", Id);
+                            return NotFound();
+                        }
                     }
-                    else
-                    {
-                        Logger.Info("GetMachines: Porażka, nie znaleziono maszyny {Id}", Id);
-                        return NotFound();
-                    }
+                    
                 }
             }
             catch (Exception ex)

@@ -18,7 +18,6 @@ namespace Local_Api2.Controllers
     [EnableCors(origins: "*", headers: "*", methods: "*")]
     public class ScanningController : ApiController
     {
-        private OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString);
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         [HttpGet]
@@ -51,81 +50,85 @@ namespace Local_Api2.Controllers
                 }
                 else
                 {
-                    var reader = GetRecentFoilScans(MachineId);
-
-                    List<ScanningItem> Scans = new List<ScanningItem>();
-                    int index = 0;
-                    int prevHour = -1;
-                    int currentHour = 0;
-
-                    if (reader.HasRows)
+                    using(OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString))
                     {
-                        while (reader.Read())
+                        var reader = GetRecentFoilScans(MachineId, Con);
+
+                        List<ScanningItem> Scans = new List<ScanningItem>();
+                        int index = 0;
+                        int prevHour = -1;
+                        int currentHour = 0;
+
+                        if (reader.HasRows)
                         {
-                            index++;
-                            currentHour = Convert.ToInt32(reader[reader.GetOrdinal("SCAN_HOUR")].ToString());
-                            DateTime currentDate = DateTime.ParseExact(reader[reader.GetOrdinal("SCAN_DAY")].ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
-                            int currentQty = Convert.ToInt32(reader[reader.GetOrdinal("QUANTITY")].ToString());
-                            double currentQtyKg = Convert.ToDouble(reader[reader.GetOrdinal("WEIGHT_NETTO")].ToString()) * currentQty;
-                            int currentMinutes = 60;
-                            int efficiency = Convert.ToInt32(reader[reader.GetOrdinal("EFFICIENCY")].ToString());
-                            if (currentDate == DateTime.Now.Date && currentHour == DateTime.Now.Hour)
+                            while (reader.Read())
                             {
-                                currentMinutes = DateTime.Now.Minute;
-                                if (currentMinutes == 0) { currentMinutes = 1; }
-                            }
-                            if (prevHour == currentHour)
-                            {
-                                //current hour is the same hour, let's combine them
-                                if (Scans.Any(s => s.Date == currentDate && s.ScanningHour == currentHour))
+                                index++;
+                                currentHour = Convert.ToInt32(reader[reader.GetOrdinal("SCAN_HOUR")].ToString());
+                                DateTime currentDate = DateTime.ParseExact(reader[reader.GetOrdinal("SCAN_DAY")].ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                                int currentQty = Convert.ToInt32(reader[reader.GetOrdinal("QUANTITY")].ToString());
+                                double currentQtyKg = Convert.ToDouble(reader[reader.GetOrdinal("WEIGHT_NETTO")].ToString()) * currentQty;
+                                int currentMinutes = 60;
+                                int efficiency = Convert.ToInt32(reader[reader.GetOrdinal("EFFICIENCY")].ToString());
+                                if (currentDate == DateTime.Now.Date && currentHour == DateTime.Now.Hour)
                                 {
-                                    ScanningItem _s = Scans.FirstOrDefault(s => s.Date == currentDate && s.ScanningHour == currentHour);
-                                    _s.Quantity += currentQty;
-                                    _s.QuantityKg += currentQtyKg;
-                                    _s.Speed = _s.Quantity / currentMinutes;
-                                    _s.ChangeOvers++;
-                                    _s.AssumedSpeed = (_s.AssumedSpeed + (efficiency / 60)) / (_s.ChangeOvers + 1);
+                                    currentMinutes = DateTime.Now.Minute;
+                                    if (currentMinutes == 0) { currentMinutes = 1; }
+                                }
+                                if (prevHour == currentHour)
+                                {
+                                    //current hour is the same hour, let's combine them
+                                    if (Scans.Any(s => s.Date == currentDate && s.ScanningHour == currentHour))
+                                    {
+                                        ScanningItem _s = Scans.FirstOrDefault(s => s.Date == currentDate && s.ScanningHour == currentHour);
+                                        _s.Quantity += currentQty;
+                                        _s.QuantityKg += currentQtyKg;
+                                        _s.Speed = _s.Quantity / currentMinutes;
+                                        _s.ChangeOvers++;
+                                        _s.AssumedSpeed = (_s.AssumedSpeed + (efficiency / 60)) / (_s.ChangeOvers + 1);
+                                    }
+                                }
+                                else
+                                {
+                                    ScanningItem i = new ScanningItem();
+                                    i.Id = index;
+                                    i.Date = currentDate;
+                                    i.ScanningHour = currentHour;
+                                    i.Quantity = currentQty;
+                                    i.QuantityKg = currentQtyKg;
+                                    i.Speed = i.Quantity / currentMinutes;
+                                    i.EanType = Convert.ToInt32(reader[reader.GetOrdinal("EAN_TYPE")].ToString());
+                                    i.AssumedSpeed = efficiency / 60;
+                                    Scans.Add(i);
+                                }
+                                prevHour = currentHour;
+
+                            }
+
+                            var readerB = GetRecentBoxesScans(MachineId, Con);
+                            if (readerB.HasRows)
+                            {
+                                while (readerB.Read())
+                                {
+                                    currentHour = Convert.ToInt32(readerB[readerB.GetOrdinal("SCAN_HOUR")].ToString());
+                                    DateTime currentDate = DateTime.ParseExact(readerB[readerB.GetOrdinal("SCAN_DAY")].ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                                    if (Scans.Any(s => s.Date == currentDate && s.ScanningHour == currentHour))
+                                    {
+                                        //update item with data from boxes scanner
+                                        Scans.Where(s => s.Date == currentDate && s.ScanningHour == currentHour).FirstOrDefault().QuantityFromBoxes += (Convert.ToInt32(readerB[readerB.GetOrdinal("QUANTITY")].ToString()) * Convert.ToInt32(readerB[readerB.GetOrdinal("BU_QUANTITY")].ToString()));
+                                    }
                                 }
                             }
-                            else
-                            {
-                                ScanningItem i = new ScanningItem();
-                                i.Id = index;
-                                i.Date = currentDate;
-                                i.ScanningHour = currentHour;
-                                i.Quantity = currentQty;
-                                i.QuantityKg = currentQtyKg;
-                                i.Speed = i.Quantity / currentMinutes;
-                                i.EanType = Convert.ToInt32(reader[reader.GetOrdinal("EAN_TYPE")].ToString());
-                                i.AssumedSpeed = efficiency / 60;
-                                Scans.Add(i);
-                            }
-                            prevHour = currentHour;
-
+                            Logger.Info("GetRecentScans: Sukces, zwracam {count} skanów dla maszyny {MachineId}", Scans.Count, MachineId);
+                            return Ok(Scans);
                         }
-
-                        var readerB = GetRecentBoxesScans(MachineId);
-                        if (readerB.HasRows)
+                        else
                         {
-                            while (readerB.Read())
-                            {
-                                currentHour = Convert.ToInt32(readerB[readerB.GetOrdinal("SCAN_HOUR")].ToString());
-                                DateTime currentDate = DateTime.ParseExact(readerB[readerB.GetOrdinal("SCAN_DAY")].ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
-                                if (Scans.Any(s => s.Date == currentDate && s.ScanningHour == currentHour))
-                                {
-                                    //update item with data from boxes scanner
-                                    Scans.Where(s => s.Date == currentDate && s.ScanningHour == currentHour).FirstOrDefault().QuantityFromBoxes += (Convert.ToInt32(readerB[readerB.GetOrdinal("QUANTITY")].ToString()) * Convert.ToInt32(readerB[readerB.GetOrdinal("BU_QUANTITY")].ToString()));
-                                }
-                            }
+                            Logger.Info("GetRecentScans: Sukces, brak skanów dla maszyny {MachineId}", MachineId);
+                            return NotFound();
                         }
-                        Logger.Info("GetRecentScans: Sukces, zwracam {count} skanów dla maszyny {MachineId}", Scans.Count, MachineId);
-                        return Ok(Scans);
                     }
-                    else
-                    {
-                        Logger.Info("GetRecentScans: Sukces, brak skanów dla maszyny {MachineId}", MachineId);
-                        return NotFound();
-                    }
+                    
                 }
             }
             catch (Exception ex)
@@ -135,7 +138,7 @@ namespace Local_Api2.Controllers
             }
         }
 
-        private OracleDataReader GetRecentBoxesScans(int MachineId)
+        private OracleDataReader GetRecentBoxesScans(int MachineId, OracleConnection Con)
         {
             if (Con.State == System.Data.ConnectionState.Closed)
             {
@@ -165,7 +168,7 @@ namespace Local_Api2.Controllers
             return reader;
         }
 
-        private OracleDataReader GetRecentFoilScans(int MachineId)
+        private OracleDataReader GetRecentFoilScans(int MachineId, OracleConnection Con)
         {
             if (Con.State == System.Data.ConnectionState.Closed)
             {
