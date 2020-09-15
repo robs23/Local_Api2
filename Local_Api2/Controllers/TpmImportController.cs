@@ -20,21 +20,23 @@ namespace Local_Api2.Controllers
         public IHttpActionResult CreateTpmEntry(Process p)
         {
             string ConStr = Static.Secrets.ApiConnectionString;
-            var Con = new Oracle.ManagedDataAccess.Client.OracleConnection(ConStr);
-
-            if (Con.State == System.Data.ConnectionState.Closed)
+            try
             {
-                Con.Open();
-            }
+                var Con = new Oracle.ManagedDataAccess.Client.OracleConnection(ConStr);
+
+                if (Con.State == System.Data.ConnectionState.Closed)
+                {
+                    Con.Open();
+                }
 
 
-            string iStr = @"INSERT INTO ifc.qmes_tpm_repairs_imp (order_nr, manager_nr, start_date, closemean_nr, end_date, initial_diagnosis, repair_actions, STATUS, IS_ADJUSTMENT, REASONCODE2, REASONCODE3) 
+                string iStr = @"INSERT INTO ifc.qmes_tpm_repairs_imp (order_nr, manager_nr, start_date, closemean_nr, end_date, initial_diagnosis, repair_actions, STATUS, IS_ADJUSTMENT, REASONCODE2, REASONCODE3) 
                             VALUES (:TheNumber, :Manager, :StartDate, :FinishedBy, :EndDate, :InitialDiagnosis, :RepairActions, :Status, :IS_ADJUSTMENT, :REASONCODE2, :REASONCODE3)";
 
-            var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(iStr, Con);
+                var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(iStr, Con);
 
-            OracleParameter[] parameters = new OracleParameter[]
-            {
+                OracleParameter[] parameters = new OracleParameter[]
+                {
                 new OracleParameter("TheNumber", p.Number),
                 new OracleParameter("Manager", p.Manager),
                 new OracleParameter("StartDate", p.StartDate),
@@ -46,12 +48,16 @@ namespace Local_Api2.Controllers
                 new OracleParameter("IS_ADJUSTMENT", p.IsAdjustment),
                 new OracleParameter("REASONCODE2", p.ReasonCode2),
                 new OracleParameter("REASONCODE3", p.ReasonCode3)
-            };
-            Command.Parameters.AddRange(parameters);
-            Command.ExecuteNonQuery();
+                };
+                Command.Parameters.AddRange(parameters);
+                Command.ExecuteNonQuery();
+                return Ok();
+            }
+            catch (Exception ex)
+            {
 
-            return Ok();
-
+                return InternalServerError(ex);
+            }
         }
 
         [HttpPost]
@@ -68,17 +74,21 @@ namespace Local_Api2.Controllers
             }
 
 
-            string iStr = @"INSERT INTO ifc.qmes_tpm_repairs_imp (order_nr, manager_nr, closemean_nr, initial_diagnosis, repair_actions, STATUS, IS_ADJUSTMENT) 
-                            VALUES ('{0}','{1}','{2}','{3}', '{4}', '{5}','{6}')";
+            string iStr = @"INSERT INTO ifc.qmes_tpm_repairs_imp (order_nr, manager_nr, closemean_nr, initial_diagnosis, repair_actions, STATUS, IS_ADJUSTMENT, REASONCODE2, REASONCODE3) 
+                            VALUES ('{0}','{1}','{2}','{3}', '{4}', '{5}','{6}','{8}','{9}')";
 
-            iStr = string.Format(iStr, p.Number, p.Manager, p.FinishedBy, p.InitialDiagnosis, p.RepairActions, p.Status,p.IsAdjustment);
+            iStr = string.Format(iStr, p.Number, p.Manager, p.FinishedBy, p.InitialDiagnosis, p.RepairActions, p.Status,p.IsAdjustment, p.ReasonCode2, p.ReasonCode3);
 
             var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(iStr, Con);
-
-            Command.ExecuteNonQuery();
-
-            return Ok();
-
+            try
+            {
+                Command.ExecuteNonQuery();
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return InternalServerError(ex);
+            }
         }
 
         [HttpGet]
