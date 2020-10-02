@@ -30,5 +30,19 @@ namespace Local_Api2.Models
         public int AssumedSpeed { get; set; }
         public int EanType { get; set; }
         public int ChangeOvers { get; set; }
+        public int SpeedDiff
+        {
+            get
+            {
+                int d = 0;
+                if(AssumedSpeed > 0)
+                {
+                    d = Speed - AssumedSpeed;
+                }
+                return d;
+            }
+        }
+        public int Zfin { get; set; }
+        public double ConfirmedKg { get; set; }
     }
 }

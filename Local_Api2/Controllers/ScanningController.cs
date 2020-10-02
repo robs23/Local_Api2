@@ -56,7 +56,6 @@ namespace Local_Api2.Controllers
 
                         List<ScanningItem> Scans = new List<ScanningItem>();
                         int index = 0;
-                        int prevHour = -1;
                         int currentHour = 0;
 
                         if (reader.HasRows)
@@ -75,33 +74,18 @@ namespace Local_Api2.Controllers
                                     currentMinutes = DateTime.Now.Minute;
                                     if (currentMinutes == 0) { currentMinutes = 1; }
                                 }
-                                if (prevHour == currentHour)
-                                {
-                                    //current hour is the same hour, let's combine them
-                                    if (Scans.Any(s => s.Date == currentDate && s.ScanningHour == currentHour))
-                                    {
-                                        ScanningItem _s = Scans.FirstOrDefault(s => s.Date == currentDate && s.ScanningHour == currentHour);
-                                        _s.Quantity += currentQty;
-                                        _s.QuantityKg += currentQtyKg;
-                                        _s.Speed = _s.Quantity / currentMinutes;
-                                        _s.ChangeOvers++;
-                                        _s.AssumedSpeed = (_s.AssumedSpeed + (efficiency / 60)) / (_s.ChangeOvers + 1);
-                                    }
-                                }
-                                else
-                                {
-                                    ScanningItem i = new ScanningItem();
-                                    i.Id = index;
-                                    i.Date = currentDate;
-                                    i.ScanningHour = currentHour;
-                                    i.Quantity = currentQty;
-                                    i.QuantityKg = currentQtyKg;
-                                    i.Speed = i.Quantity / currentMinutes;
-                                    i.EanType = Convert.ToInt32(reader[reader.GetOrdinal("EAN_TYPE")].ToString());
-                                    i.AssumedSpeed = efficiency / 60;
-                                    Scans.Add(i);
-                                }
-                                prevHour = currentHour;
+
+                                ScanningItem i = new ScanningItem();
+                                i.Id = index;
+                                i.Date = currentDate;
+                                i.ScanningHour = currentHour;
+                                i.Quantity = currentQty;
+                                i.QuantityKg = currentQtyKg;
+                                i.Speed = i.Quantity / currentMinutes;
+                                i.EanType = Convert.ToInt32(reader[reader.GetOrdinal("EAN_TYPE")].ToString());
+                                i.AssumedSpeed = efficiency / 60;
+                                i.Zfin = Convert.ToInt32(reader["PRODUCT_NR"].ToString());
+                                Scans.Add(i);
 
                             }
 
@@ -116,6 +100,48 @@ namespace Local_Api2.Controllers
                                     {
                                         //update item with data from boxes scanner
                                         Scans.Where(s => s.Date == currentDate && s.ScanningHour == currentHour).FirstOrDefault().QuantityFromBoxes += (Convert.ToInt32(readerB[readerB.GetOrdinal("QUANTITY")].ToString()) * Convert.ToInt32(readerB[readerB.GetOrdinal("BU_QUANTITY")].ToString()));
+                                    }
+                                }
+                            }
+                            var readerC = Utilities.GetRecentProductData(MachineId, Con);
+                            if (readerC.HasRows)
+                            {
+                                int currentZfin;
+                                DateTime start;
+                                DateTime? end;
+
+                                while (readerC.Read())
+                                {
+                                    currentZfin = Convert.ToInt32(readerC["PRODUCT_NR"].ToString());
+                                    start = DateTime.ParseExact(readerC[readerC.GetOrdinal("STARTED_DATE")].ToString(), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                                    if (readerC.IsDBNull(readerC.GetOrdinal("FINISHED_DATE")))
+                                    {
+                                        end = DateTime.Now;
+                                    }
+                                    else
+                                    {
+                                        end = DateTime.ParseExact(readerC[readerC.GetOrdinal("FINISHED_DATE")].ToString(), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                                    }
+                                    
+                                    DateTime rndStart = new DateTime(start.Year, start.Month, start.Day, start.Hour, 0, 0);
+                                    DateTime rndEnd = ((DateTime)end).AddHours(1);
+
+                                    foreach (ScanningItem si in Scans.Where(s => s.Zfin == currentZfin))
+                                    {
+
+                                        try
+                                        {
+                                            DateTime siDate = new DateTime(si.Date.Year, si.Date.Month, si.Date.Day, si.ScanningHour, 0, 0);
+                                            if (siDate >= rndStart && siDate <= rndEnd)
+                                            {
+                                                si.ConfirmedKg = readerC.GetDouble(readerC.GetOrdinal("QUANTITY_KG"));
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+
+                                            throw;
+                                        }
                                     }
                                 }
                             }
