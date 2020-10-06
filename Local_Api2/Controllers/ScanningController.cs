@@ -52,6 +52,7 @@ namespace Local_Api2.Controllers
                 {
                     using(OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString))
                     {
+                        Logger.Debug("GetRecentScans has started");
                         var reader = GetRecentFoilScans(MachineId, Con);
 
                         List<ScanningItem> Scans = new List<ScanningItem>();
@@ -109,18 +110,35 @@ namespace Local_Api2.Controllers
                                 int currentZfin;
                                 DateTime start;
                                 DateTime? end;
-
+                                string[] formats = { "yyyy-MM-dd HH:mm:ss", "dd.MM.yyyy HH:mm:ss" };
+                                
                                 while (readerC.Read())
                                 {
                                     currentZfin = Convert.ToInt32(readerC["PRODUCT_NR"].ToString());
-                                    start = DateTime.ParseExact(readerC[readerC.GetOrdinal("STARTED_DATE")].ToString(), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                                    try
+                                    {
+                                        start = DateTime.ParseExact(readerC[readerC.GetOrdinal("STARTED_DATE")].ToString(), formats, CultureInfo.InvariantCulture, DateTimeStyles.None);
+                                    }catch(Exception ex)
+                                    {
+                                        Logger.Error("Start Date {Date} has invalid format. Szczegóły: {ex}",readerC[readerC.GetOrdinal("STARTED_DATE")].ToString(), ex);
+                                        throw;
+                                    }
+                                    
                                     if (readerC.IsDBNull(readerC.GetOrdinal("FINISHED_DATE")))
                                     {
                                         end = DateTime.Now;
                                     }
                                     else
                                     {
-                                        end = DateTime.ParseExact(readerC[readerC.GetOrdinal("FINISHED_DATE")].ToString(), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                                        try
+                                        {
+                                            end = DateTime.ParseExact(readerC[readerC.GetOrdinal("FINISHED_DATE")].ToString(), formats, CultureInfo.InvariantCulture, DateTimeStyles.None);
+                                        }catch(Exception ex)
+                                        {
+                                            Logger.Error("Finish Date {Date} has invalid format. Szczegóły: {ex}", readerC[readerC.GetOrdinal("FINISHED_DATE")].ToString(), ex);
+                                            throw;
+                                        }
+                                        
                                     }
                                     
                                     DateTime rndStart = new DateTime(start.Year, start.Month, start.Day, start.Hour, 0, 0);
@@ -166,6 +184,8 @@ namespace Local_Api2.Controllers
 
         private OracleDataReader GetRecentBoxesScans(int MachineId, OracleConnection Con)
         {
+            Logger.Debug("GetRecentBoxesScans started for Machine={MachineId}", MachineId);
+
             if (Con.State == System.Data.ConnectionState.Closed)
             {
                 Con.Open();
@@ -191,11 +211,15 @@ namespace Local_Api2.Controllers
             Command.Parameters.AddRange(parameters);
 
             var reader = Command.ExecuteReader();
+            Logger.Debug("GetRecentBoxesScans ended");
+
             return reader;
         }
 
         private OracleDataReader GetRecentFoilScans(int MachineId, OracleConnection Con)
         {
+            Logger.Debug("GetRecentFoilsScans started for Machine={MachineId}", MachineId);
+
             if (Con.State == System.Data.ConnectionState.Closed)
             {
                 Con.Open();
@@ -223,6 +247,8 @@ namespace Local_Api2.Controllers
             Command.Parameters.AddRange(parameters);
 
             var reader = Command.ExecuteReader();
+            Logger.Debug("GetRecentFoilsScans finished");
+
             return reader;
         }
     }

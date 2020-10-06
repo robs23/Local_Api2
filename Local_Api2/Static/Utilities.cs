@@ -1,4 +1,5 @@
-﻿using Oracle.ManagedDataAccess.Client;
+﻿using NLog;
+using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,8 +9,11 @@ namespace Local_Api2.Static
 {
     public static class Utilities
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         public static OracleDataReader GetRecentProductData(int MachineId, OracleConnection Con)
         {
+            Logger.Debug("GetRecentProductData started for Machine={MachineId}", MachineId);
+
             if (Con.State == System.Data.ConnectionState.Closed)
             {
                 Con.Open();
@@ -34,6 +38,8 @@ namespace Local_Api2.Static
             };
             Command.Parameters.AddRange(parameters);
             var reader = Command.ExecuteReader();
+            Logger.Debug("GetRecentProductData finished");
+
             return reader;
         }
     }
