@@ -2,6 +2,8 @@
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Web;
 
@@ -40,6 +42,26 @@ namespace Local_Api2.Static
             var reader = Command.ExecuteReader();
             Logger.Debug("GetRecentProductData finished");
 
+            return reader;
+        }
+
+        public static SqlDataReader GetRecentXrayData(string MachineName, SqlConnection Con)
+        {
+            string sql = @"SELECT ArticleName, DeviceName, ProductionStart, ProductionEnd, TimeStamp, Throughput, CounterError, CounterTrade, CounterTotal, CounterBad, CounterContaminated
+                                    FROM StatisticView WHERE ProductionStart >= @StartDate";
+            if (!string.IsNullOrEmpty(MachineName))
+            {
+                sql += $" AND DeviceName LIKE '%{int.Parse(MachineName.Substring(MachineName.Length - 2, 2))}'";
+            }
+            sql += " ORDER BY TimeStamp DESC";
+            SqlCommand command = new SqlCommand(sql, Con);
+            command.Parameters.Add("@StartDate", SqlDbType.DateTime);
+            command.Parameters["@StartDate"].Value = DateTime.Now.AddDays(-1);
+            if(Con.State == ConnectionState.Closed || Con.State == ConnectionState.Broken)
+            {
+                Con.Open();
+            }
+            SqlDataReader reader = command.ExecuteReader();
             return reader;
         }
     }

@@ -1,4 +1,5 @@
 ﻿using Local_Api2.Models;
+using Local_Api2.Static;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -7,10 +8,12 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using System.Web.Http.Cors;
 using System.Web.Http.Description;
 
 namespace Local_Api2.Controllers
 {
+    [EnableCors(origins: "*", headers: "*", methods: "*")]
     public class XrayDataController : ApiController
     {
         [HttpGet]
@@ -24,19 +27,8 @@ namespace Local_Api2.Controllers
                 List<XRayDataRecord> Records = new List<XRayDataRecord>();
                 using(SqlConnection XrayConn = new SqlConnection(Static.Secrets.xRayConnectionString))
                 {
-                    
-                    string sql = @"SELECT ArticleName, DeviceName, ProductionStart, ProductionEnd, TimeStamp, Throughput, CounterError, CounterTrade, CounterTotal, CounterBad, CounterContaminated
-                                    FROM StatisticView WHERE ProductionStart >= @StartDate";
-                    if (!string.IsNullOrEmpty(MachineName))
-                    {
-                        sql += $" AND DeviceName LIKE '%{int.Parse(MachineName.Substring(MachineName.Length - 2, 2))}'";
-                    }
-                    sql += " ORDER BY TimeStamp DESC";
-                    SqlCommand command = new SqlCommand(sql, XrayConn);
-                    command.Parameters.Add("@StartDate", SqlDbType.DateTime);
-                    command.Parameters["@StartDate"].Value = DateTime.Now.AddDays(-1);
-                    XrayConn.Open();
-                    using(SqlDataReader reader = command.ExecuteReader())
+
+                    using (SqlDataReader reader = Utilities.GetRecentXrayData(MachineName, XrayConn))
                     {
                         while (reader.Read())
                         {

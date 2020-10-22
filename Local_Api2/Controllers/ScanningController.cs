@@ -4,6 +4,7 @@ using NLog;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
 using System.Net;
@@ -58,11 +59,16 @@ namespace Local_Api2.Controllers
                         List<ScanningItem> Scans = new List<ScanningItem>();
                         int index = 0;
                         int currentHour = 0;
-
+                        string MachineName = "";
                         if (reader.HasRows)
                         {
                             while (reader.Read())
                             {
+                                if (index == 0)
+                                {
+                                    MachineName = reader["MACHINE_NR"].ToString();
+                                    MachineName = MachineName.Substring(MachineName.Length - 2, 2);
+                                }
                                 index++;
                                 currentHour = Convert.ToInt32(reader[reader.GetOrdinal("SCAN_HOUR")].ToString());
                                 DateTime currentDate = DateTime.ParseExact(reader[reader.GetOrdinal("SCAN_DAY")].ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -87,8 +93,28 @@ namespace Local_Api2.Controllers
                                 i.AssumedSpeed = efficiency / 60;
                                 i.Zfin = Convert.ToInt32(reader["PRODUCT_NR"].ToString());
                                 Scans.Add(i);
-
+                                //if (Scans.Any())
+                                //{
+                                //    //check if the one before the previous one wasn't the same index. If it was, combine them
+                                //    int insertIndex = Scans.Count - 1;
+                                //    if (Scans[insertIndex].Zfin == i.Zfin)
+                                //    {
+                                //        Logger.Info("Index {zfin} znaleziony na przedostatniej pozycji {poz}. Wciskam go na pozcyję {poz}", i.Zfin, insertIndex, insertIndex) ;
+                                //        Scans.Insert(Scans.Count - 1, i);
+                                //    }
+                                //    else
+                                //    {
+                                //        Logger.Info("Index {zfin} wędruje na górę listy. Przedostani index = {index}", i.Zfin, Scans[insertIndex].Zfin);
+                                //        Scans.Add(i);
+                                //    }
+                                //}
+                                //else
+                                //{
+                                //    Scans.Add(i);
+                                //}
                             }
+                            //Scans = Scans.OrderByDescending(s => s.Date).ThenByDescending(s=>s.ScanningHour).ToList();
+
 
                             var readerB = GetRecentBoxesScans(MachineId, Con);
                             if (readerB.HasRows)
@@ -163,6 +189,55 @@ namespace Local_Api2.Controllers
                                     }
                                 }
                             }
+                            using(SqlConnection XRayConn = new SqlConnection(Static.Secrets.xRayConnectionString))
+                            {
+                                using (var readerD = Utilities.GetRecentXrayData(MachineName, XRayConn))
+                                {
+                                    if (readerD.HasRows)
+                                    {
+                                        int currentZfin;
+                                        DateTime start;
+                                        DateTime end;
+
+                                        while (readerD.Read())
+                                        {
+                                            currentZfin = Convert.ToInt32(readerD["ArticleName"].ToString());
+                                            try
+                                            {
+                                                start = readerD.GetDateTime(readerD.GetOrdinal("ProductionStart"));
+                                                end = readerD.GetDateTime(readerD.GetOrdinal("ProductionEnd"));
+                                                DateTime rndStart = new DateTime(start.Year, start.Month, start.Day, start.Hour, 0, 0);
+                                                DateTime rndEnd = ((DateTime)end).AddHours(1);
+                                                foreach (ScanningItem si in Scans.Where(s => s.Zfin == currentZfin))
+                                                {
+
+                                                    try
+                                                    {
+                                                        DateTime siDate = new DateTime(si.Date.Year, si.Date.Month, si.Date.Day, si.ScanningHour, 0, 0);
+                                                        if (siDate >= rndStart && siDate <= rndEnd)
+                                                        {
+                                                            si.Contaminated = Convert.ToInt32(readerD["CounterContaminated"].ToString());
+                                                        }
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+
+                                                        throw;
+                                                    }
+                                                }
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Logger.Error("Błąd podczas czytania rekordów z XRaya dla maszyny {machine}. Szczegóły: {ex}", readerD[readerD.GetOrdinal("DeviceName")].ToString(), ex);
+                                                throw;
+                                            }
+                                        }
+                                    }
+                                    
+                                }
+                            }
+                            
+
                             Logger.Info("GetRecentScans: Sukces, zwracam {count} skanów dla maszyny {MachineId}", Scans.Count, MachineId);
                             return Ok(Scans);
                         }
@@ -226,16 +301,17 @@ namespace Local_Api2.Controllers
             }
 
 
-            string str = $@"SELECT        scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24') AS SCAN_HOUR, to_char(scan.C_DATE, 'YYYY-MM-DD') AS SCAN_DAY, SUM(scan.SCAN_COUNT) AS QUANTITY, uom.WEIGHT_NETTO, SUM(scan.ERROR_COUNT) AS ERROR, 
+            string str = $@"SELECT        scan.MACHINE_ID, mach.MACHINE_NR, to_char(scan.C_DATE, 'HH24') AS SCAN_HOUR, to_char(scan.C_DATE, 'YYYY-MM-DD') AS SCAN_DAY, SUM(scan.SCAN_COUNT) AS QUANTITY, uom.WEIGHT_NETTO, SUM(scan.ERROR_COUNT) AS ERROR, 
                          scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, CAST(ef.EFFICIENCY AS INT) AS EFFICIENCY 
                          FROM QMES_WIP_SCAN_COUNT scan LEFT OUTER JOIN
                          QMES_WIP_OPERATION_QTY op_qty ON op_qty.OPERATION_ID = scan.OPERATION_ID LEFT OUTER JOIN
                          QCM_PRODUCTS prod ON prod.PRODUCT_ID = op_qty.PRODUCT_ID LEFT OUTER JOIN
                          QCM_PACKAGE_HEADERS pack ON pack.PRODUCT_ID = prod.PRODUCT_ID LEFT OUTER JOIN
                          QCM_PACKAGE_LEVELS uom ON uom.PACKAGE_ID = pack.PACKAGE_ID LEFT OUTER JOIN
-                         QMES_FO_MACHINE_EFFICIENCY ef ON ef.MACHINE_ID = scan.MACHINE_ID AND ef.PRODUCT_ID = op_qty.PRODUCT_ID
+                         QMES_FO_MACHINE_EFFICIENCY ef ON ef.MACHINE_ID = scan.MACHINE_ID AND ef.PRODUCT_ID = op_qty.PRODUCT_ID LEFT OUTER JOIN 
+                         QMES_FO_MACHINE mach ON mach.MACHINE_ID = scan.MACHINE_ID 
                          WHERE (scan.C_DATE >= :StartDate) AND (scan.MACHINE_ID = {MachineId}) AND (scan.EAN_TYPE=2) AND (uom.LEVEL_NR = 0)
-                         GROUP BY scan.MACHINE_ID, to_char(scan.C_DATE, 'HH24'), to_char(scan.C_DATE, 'YYYY-MM-DD'), scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, uom.WEIGHT_NETTO, ef.EFFICIENCY
+                         GROUP BY scan.MACHINE_ID, mach.MACHINE_NR, to_char(scan.C_DATE, 'HH24'), to_char(scan.C_DATE, 'YYYY-MM-DD'), scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, uom.WEIGHT_NETTO, ef.EFFICIENCY
                          ORDER BY SCAN_DAY DESC, SCAN_HOUR DESC";
 
             var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);

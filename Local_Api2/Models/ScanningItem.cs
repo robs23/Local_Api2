@@ -44,5 +44,6 @@ namespace Local_Api2.Models
         }
         public int Zfin { get; set; }
         public double ConfirmedKg { get; set; }
+        public int Contaminated { get; set; } //Xray 
     }
 }
