@@ -96,12 +96,15 @@ namespace Local_Api2.Controllers
                                 i.EanType = Convert.ToInt32(reader[reader.GetOrdinal("EAN_TYPE")].ToString());
                                 i.AssumedSpeed = efficiency / 60;
                                 i.Zfin = currentProduct;
-                                if (currentHour == prevHour && currentProduct == Scans[Scans.Count-2].Zfin)
+                                if (currentHour == prevHour)
                                 {
                                     i.ChangeOvers = 1;
                                     Scans.Last().ChangeOvers = 1;
-                                    Scans.Last().Id = index;
-                                    Scans.Insert(Scans.Count - 1, i);
+                                    if(currentProduct == Scans[Scans.Count - 2].Zfin)
+                                    {
+                                        Scans.Last().Id = index;
+                                        Scans.Insert(Scans.Count - 1, i);
+                                    }
                                 }
                                 else
                                 {
