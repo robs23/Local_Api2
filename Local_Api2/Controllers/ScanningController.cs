@@ -96,12 +96,12 @@ namespace Local_Api2.Controllers
                                 i.EanType = Convert.ToInt32(reader[reader.GetOrdinal("EAN_TYPE")].ToString());
                                 i.AssumedSpeed = efficiency / 60;
                                 i.Zfin = currentProduct;
-                                if (currentHour == prevHour)
+                                if (currentHour == prevHour && currentProduct == Scans[Scans.Count-2].Zfin)
                                 {
                                     i.ChangeOvers = 1;
                                     Scans.Last().ChangeOvers = 1;
                                     Scans.Last().Id = index;
-                                    Scans.Insert(Scans.Count - 2, i);
+                                    Scans.Insert(Scans.Count - 1, i);
                                 }
                                 else
                                 {
@@ -109,6 +109,7 @@ namespace Local_Api2.Controllers
                                 }
                                 
                                 prevHour = currentHour;
+                                prevProduct = currentProduct;
                                 //if (Scans.Any())
                                 //{
                                 //    //check if the one before the previous one wasn't the same index. If it was, combine them
