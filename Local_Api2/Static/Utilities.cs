@@ -48,7 +48,7 @@ namespace Local_Api2.Static
         public static SqlDataReader GetRecentXrayData(string MachineName, SqlConnection Con)
         {
             string sql = @"SELECT ArticleName, DeviceName, ProductionStart, ProductionEnd, TimeStamp, Throughput, CounterError, CounterTrade, CounterTotal, CounterBad, CounterContaminated
-                                    FROM StatisticView WHERE ProductionStart >= @StartDate";
+                                    FROM StatisticView WHERE ProductionEnd >= @StartDate";
             if (!string.IsNullOrEmpty(MachineName))
             {
                 sql += $" AND DeviceName LIKE '%{int.Parse(MachineName.Substring(MachineName.Length - 2, 2))}'";

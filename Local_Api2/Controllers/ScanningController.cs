@@ -65,76 +65,71 @@ namespace Local_Api2.Controllers
                         string MachineName = "";
                         if (reader.HasRows)
                         {
-                            while (reader.Read())
+                            try
                             {
-                                if (index == 0)
+                                while (reader.Read())
                                 {
-                                    MachineName = reader["MACHINE_NR"].ToString();
-                                    MachineName = MachineName.Substring(MachineName.Length - 2, 2);
-                                }
-                                index++;
-                                currentHour = Convert.ToInt32(reader[reader.GetOrdinal("SCAN_HOUR")].ToString());
-                                currentProduct = Convert.ToInt32(reader["PRODUCT_NR"].ToString());
-                                DateTime currentDate = DateTime.ParseExact(reader[reader.GetOrdinal("SCAN_DAY")].ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
-                                int currentQty = Convert.ToInt32(reader[reader.GetOrdinal("QUANTITY")].ToString());
-                                double currentQtyKg = Convert.ToDouble(reader[reader.GetOrdinal("WEIGHT_NETTO")].ToString()) * currentQty;
-                                int currentMinutes = 60;
-                                int efficiency = Convert.ToInt32(reader[reader.GetOrdinal("EFFICIENCY")].ToString());
-                                if (currentDate == DateTime.Now.Date && currentHour == DateTime.Now.Hour)
-                                {
-                                    currentMinutes = DateTime.Now.Minute;
-                                    if (currentMinutes == 0) { currentMinutes = 1; }
-                                }
-
-                                ScanningItem i = new ScanningItem();
-                                i.Id = index;
-                                i.Date = currentDate;
-                                i.ScanningHour = currentHour;
-                                i.Quantity = currentQty;
-                                i.QuantityKg = currentQtyKg;
-                                i.Speed = i.Quantity / currentMinutes;
-                                i.EanType = Convert.ToInt32(reader[reader.GetOrdinal("EAN_TYPE")].ToString());
-                                i.AssumedSpeed = efficiency / 60;
-                                i.Zfin = currentProduct;
-                                if (currentHour == prevHour)
-                                {
-                                    i.ChangeOvers = 1;
-                                    Scans.Last().ChangeOvers = 1;
-                                    if(currentProduct == Scans[Scans.Count - 2].Zfin)
+                                    if (index == 0)
                                     {
-                                        Scans.Last().Id = index;
-                                        Scans.Insert(Scans.Count - 1, i);
+                                        MachineName = reader["MACHINE_NR"].ToString();
+                                        MachineName = MachineName.Substring(MachineName.Length - 2, 2);
                                     }
-                                }
-                                else
-                                {
-                                    Scans.Add(i);
-                                }
-                                
-                                prevHour = currentHour;
-                                prevProduct = currentProduct;
-                                //if (Scans.Any())
-                                //{
-                                //    //check if the one before the previous one wasn't the same index. If it was, combine them
-                                //    int insertIndex = Scans.Count - 1;
-                                //    if (Scans[insertIndex].Zfin == i.Zfin)
-                                //    {
-                                //        Logger.Info("Index {zfin} znaleziony na przedostatniej pozycji {poz}. Wciskam go na pozcyję {poz}", i.Zfin, insertIndex, insertIndex) ;
-                                //        Scans.Insert(Scans.Count - 1, i);
-                                //    }
-                                //    else
-                                //    {
-                                //        Logger.Info("Index {zfin} wędruje na górę listy. Przedostani index = {index}", i.Zfin, Scans[insertIndex].Zfin);
-                                //        Scans.Add(i);
-                                //    }
-                                //}
-                                //else
-                                //{
-                                //    Scans.Add(i);
-                                //}
-                            }
-                            //Scans = Scans.OrderByDescending(s => s.Date).ThenByDescending(s=>s.ScanningHour).ToList();
+                                    index++;
+                                    currentHour = Convert.ToInt32(reader[reader.GetOrdinal("SCAN_HOUR")].ToString());
+                                    currentProduct = Convert.ToInt32(reader["PRODUCT_NR"].ToString());
+                                    DateTime currentDate = DateTime.ParseExact(reader[reader.GetOrdinal("SCAN_DAY")].ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                                    int currentQty = Convert.ToInt32(reader[reader.GetOrdinal("QUANTITY")].ToString());
+                                    double currentQtyKg = Convert.ToDouble(reader[reader.GetOrdinal("WEIGHT_NETTO")].ToString()) * currentQty;
+                                    int currentMinutes = 60;
+                                    int efficiency = Convert.ToInt32(reader[reader.GetOrdinal("EFFICIENCY")].ToString());
+                                    if (currentDate == DateTime.Now.Date && currentHour == DateTime.Now.Hour)
+                                    {
+                                        currentMinutes = DateTime.Now.Minute;
+                                        if (currentMinutes == 0) { currentMinutes = 1; }
+                                    }
 
+                                    ScanningItem i = new ScanningItem();
+                                    i.Id = index;
+                                    i.Date = currentDate;
+                                    i.ScanningHour = currentHour;
+                                    i.Quantity = currentQty;
+                                    i.QuantityKg = currentQtyKg;
+                                    i.Speed = i.Quantity / currentMinutes;
+                                    i.EanType = Convert.ToInt32(reader[reader.GetOrdinal("EAN_TYPE")].ToString());
+                                    i.AssumedSpeed = efficiency / 60;
+                                    i.Zfin = currentProduct;
+                                    if (currentHour == prevHour)
+                                    {
+                                        i.ChangeOvers = 1;
+                                        Scans.Last().ChangeOvers = 1;
+                                        if (Scans.Count >= 2)
+                                        {
+                                            if (currentProduct == Scans[Scans.Count - 2].Zfin)
+                                            {
+                                                Scans.Last().Id = index;
+                                                Scans.Insert(Scans.Count - 1, i);
+                                            }
+                                            else
+                                            {
+                                                Scans.Add(i);
+                                            }
+                                        }
+                                        
+                                    }
+                                    else
+                                    {
+                                        Scans.Add(i);
+                                    }
+
+                                    prevHour = currentHour;
+                                    prevProduct = currentProduct;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Error("Błąd podczas czytania rekordów ze skanera folii dla maszyny {machine}. Szczegóły: {ex}", reader[reader.GetOrdinal("MACHINE_NR")].ToString(), ex);
+                                throw;
+                            }
 
                             var readerB = GetRecentBoxesScans(MachineId, Con);
                             if (readerB.HasRows)
