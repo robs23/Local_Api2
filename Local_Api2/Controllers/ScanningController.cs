@@ -40,10 +40,7 @@ namespace Local_Api2.Controllers
                                 Id = i,
                                 ScanningHour = i,
                                 Date = DateTime.Today,
-                                EanType = 2,
-                                Quantity = i * 100,
-                                QuantityKg = i * 50,
-                                Speed = (i * 100) / 60
+                                EanType = 2
                             }
                             );
                     }
@@ -79,25 +76,19 @@ namespace Local_Api2.Controllers
                                     currentProduct = Convert.ToInt32(reader["PRODUCT_NR"].ToString());
                                     DateTime currentDate = DateTime.ParseExact(reader[reader.GetOrdinal("SCAN_DAY")].ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
                                     int currentQty = Convert.ToInt32(reader[reader.GetOrdinal("QUANTITY")].ToString());
-                                    double currentQtyKg = Convert.ToDouble(reader[reader.GetOrdinal("WEIGHT_NETTO")].ToString()) * currentQty;
-                                    int currentMinutes = 60;
                                     int efficiency = Convert.ToInt32(reader[reader.GetOrdinal("EFFICIENCY")].ToString());
-                                    if (currentDate == DateTime.Now.Date && currentHour == DateTime.Now.Hour)
-                                    {
-                                        currentMinutes = DateTime.Now.Minute;
-                                        if (currentMinutes == 0) { currentMinutes = 1; }
-                                    }
+                                    int max_efficiency = Convert.ToInt32(reader[reader.GetOrdinal("MAX_EFFICIENCY")].ToString());
 
                                     ScanningItem i = new ScanningItem();
                                     i.Id = index;
                                     i.Date = currentDate;
                                     i.ScanningHour = currentHour;
-                                    i.Quantity = currentQty;
-                                    i.QuantityKg = currentQtyKg;
-                                    i.Speed = i.Quantity / currentMinutes;
+                                    i.QuantityFromFoil = currentQty;
                                     i.EanType = Convert.ToInt32(reader[reader.GetOrdinal("EAN_TYPE")].ToString());
                                     i.AssumedSpeed = efficiency / 60;
+                                    i.GE = ((double)i.Quantity / (double)max_efficiency)*100;
                                     i.Zfin = currentProduct;
+                                    i.NetWeight = Convert.ToDouble(reader[reader.GetOrdinal("WEIGHT_NETTO")].ToString());
                                     if (currentHour == prevHour)
                                     {
                                         i.ChangeOvers = 1;
@@ -317,7 +308,7 @@ namespace Local_Api2.Controllers
 
 
             string str = $@"SELECT        scan.MACHINE_ID, mach.MACHINE_NR, to_char(scan.C_DATE, 'HH24') AS SCAN_HOUR, to_char(scan.C_DATE, 'YYYY-MM-DD') AS SCAN_DAY, SUM(scan.SCAN_COUNT) AS QUANTITY, uom.WEIGHT_NETTO, SUM(scan.ERROR_COUNT) AS ERROR, 
-                         scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, CAST(ef.EFFICIENCY AS INT) AS EFFICIENCY 
+                         scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, CAST(ef.EFFICIENCY AS INT) AS EFFICIENCY, CAST(ef.MAX_EFFICIENCY AS INT) AS MAX_EFFICIENCY 
                          FROM QMES_WIP_SCAN_COUNT scan LEFT OUTER JOIN
                          QMES_WIP_OPERATION_QTY op_qty ON op_qty.OPERATION_ID = scan.OPERATION_ID LEFT OUTER JOIN
                          QCM_PRODUCTS prod ON prod.PRODUCT_ID = op_qty.PRODUCT_ID LEFT OUTER JOIN
@@ -326,7 +317,7 @@ namespace Local_Api2.Controllers
                          QMES_FO_MACHINE_EFFICIENCY ef ON ef.MACHINE_ID = scan.MACHINE_ID AND ef.PRODUCT_ID = op_qty.PRODUCT_ID LEFT OUTER JOIN 
                          QMES_FO_MACHINE mach ON mach.MACHINE_ID = scan.MACHINE_ID 
                          WHERE (scan.C_DATE >= :StartDate) AND (scan.MACHINE_ID = {MachineId}) AND (scan.EAN_TYPE=2) AND (uom.LEVEL_NR = 0)
-                         GROUP BY scan.MACHINE_ID, mach.MACHINE_NR, to_char(scan.C_DATE, 'HH24'), to_char(scan.C_DATE, 'YYYY-MM-DD'), scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, uom.WEIGHT_NETTO, ef.EFFICIENCY
+                         GROUP BY scan.MACHINE_ID, mach.MACHINE_NR, to_char(scan.C_DATE, 'HH24'), to_char(scan.C_DATE, 'YYYY-MM-DD'), scan.EAN_TYPE, op_qty.PRODUCT_ID, prod.PRODUCT_NR, uom.WEIGHT_NETTO, ef.EFFICIENCY, ef.MAX_EFFICIENCY
                          ORDER BY SCAN_DAY DESC, SCAN_HOUR DESC";
 
             var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
