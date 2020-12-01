@@ -36,7 +36,7 @@ namespace Local_Api2.Static
             var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(sql, Con);
             OracleParameter[] parameters = new OracleParameter[]
             {
-                    new OracleParameter("StartDate", DateTime.Now.AddDays(-1)),
+                    new OracleParameter("StartDate", Utilities.GetStartDate()),
             };
             Command.Parameters.AddRange(parameters);
             var reader = Command.ExecuteReader();
@@ -56,13 +56,73 @@ namespace Local_Api2.Static
             sql += " ORDER BY TimeStamp DESC";
             SqlCommand command = new SqlCommand(sql, Con);
             command.Parameters.Add("@StartDate", SqlDbType.DateTime);
-            command.Parameters["@StartDate"].Value = DateTime.Now.AddDays(-1);
+            command.Parameters["@StartDate"].Value = Utilities.GetStartDate();
             if(Con.State == ConnectionState.Closed || Con.State == ConnectionState.Broken)
             {
                 Con.Open();
             }
             SqlDataReader reader = command.ExecuteReader();
             return reader;
+        }
+
+        public static SqlDataReader GetRecentComponentScrap(SqlConnection Con, int? MaterialType = null)
+        {
+            string sql = @"SELECT z.zfinIndex, m.zfinIndex as material, bom.amount, bom.unit, t.scrap
+                            FROM tbBom bom LEFT JOIN tbZfin z ON z.zfinId = bom.zfinId
+	                            LEFT JOIN tbBomReconciliation br ON br.bomRecId = bom.bomRecId
+	                            LEFT JOIN tbZfin m ON m.zfinId = bom.materialId
+	                            LEFT JOIN 
+                            (SELECT z.zfinIndex,cs.scrap
+                            FROM tbComponentScrap cs LEFT JOIN tbZfin z ON z.zfinId = cs.zfinId
+	                            LEFT JOIN tbScrapReconciliation sr ON sr.scrapReconciliationId = cs.componentScrapId
+                            WHERE cs.scrapReconciliationId = (SELECT TOP(1) scrapReconciliationId FROM tbScrapReconciliation ORDER BY dateAdded DESC)) t ON t.zfinIndex = m.zfinIndex
+                            WHERE bom.bomRecId = (SELECT TOP(1) bomRecId FROM tbBomReconciliation ORDER BY dateAdded DESC)";
+            if (MaterialType != null)
+            {
+                sql += $" AND m.materialType={MaterialType}";
+            }
+            SqlCommand command = new SqlCommand(sql, Con);
+            if (Con.State == ConnectionState.Closed || Con.State == ConnectionState.Broken)
+            {
+                Con.Open();
+            }
+            SqlDataReader reader = command.ExecuteReader();
+            return reader;
+        }
+
+        public static DateTime GetStartDate()
+        {
+            DateTime yesterday = DateTime.Now.AddDays(-1);
+            DateTime rDate;
+            bool keepDate = true;
+            int h = yesterday.Hour;
+            if(h >= 6 && h < 14)
+            {
+                h = 6;
+            }else if(h >= 14 && h < 22)
+            {
+                h = 14;
+            }
+            else if(h == 22 || h == 23)
+            {
+                h = 22;
+            }
+            else
+            {
+                //00 - 05:59
+                h = 22;
+                keepDate = false;
+            }
+            if (!keepDate)
+            {
+                //yesterday = yesterday - 1
+                yesterday = yesterday.AddDays(-1);
+            }
+
+            //Set to yesterday H:00:00
+            rDate = new DateTime(yesterday.Year, yesterday.Month, yesterday.Day, h, 0, 0);
+
+            return rDate;
         }
     }
 }

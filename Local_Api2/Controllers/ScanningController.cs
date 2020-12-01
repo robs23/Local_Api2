@@ -242,7 +242,27 @@ namespace Local_Api2.Controllers
                                     
                                 }
                             }
-                            
+                            using(SqlConnection NpdConnection = new SqlConnection(Static.Secrets.NpdConnectionString))
+                            {
+                                using(var readerE = Utilities.GetRecentComponentScrap(NpdConnection, 2))
+                                {
+                                    //Get foil scrap
+                                    int currentZfin; 
+
+                                    while (readerE.Read())
+                                    {
+                                        currentZfin = Convert.ToInt32(readerE["ZfinIndex"].ToString());
+                                        double? scrap = readerE.IsDBNull(readerE.GetOrdinal("scrap")) ? new double?() : readerE.GetDouble(readerE.GetOrdinal("scrap"));
+                                        if (scrap != null)
+                                        {
+                                            foreach(ScanningItem si in Scans.Where(i=> i.Zfin == currentZfin))
+                                            {
+                                                si.AssumedFoilLossPercentage = scrap;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 
                             Logger.Info("GetRecentScans: Sukces, zwracam {count} skanów dla maszyny {MachineId}", Scans.Count, MachineId);
                             return Ok(Scans);
@@ -287,7 +307,7 @@ namespace Local_Api2.Controllers
 
             OracleParameter[] parameters = new OracleParameter[]
             {
-                new OracleParameter("StartDate", DateTime.Now.AddDays(-1)),
+                new OracleParameter("StartDate", Utilities.GetStartDate()),
             };
             Command.Parameters.AddRange(parameters);
 
@@ -324,7 +344,7 @@ namespace Local_Api2.Controllers
 
             OracleParameter[] parameters = new OracleParameter[]
             {
-                new OracleParameter("StartDate", DateTime.Now.AddDays(-1)),
+                new OracleParameter("StartDate", Utilities.GetStartDate()),
             };
             Command.Parameters.AddRange(parameters);
 

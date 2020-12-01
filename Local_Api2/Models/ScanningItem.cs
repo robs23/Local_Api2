@@ -14,7 +14,7 @@ namespace Local_Api2.Models
         {
             get
             {
-                if (QuantityFromBoxes > 0)
+                if (QuantityFromBoxes > (QuantityFromFoil * 0.6))
                 {
                     return QuantityFromBoxes;
                 }
@@ -42,8 +42,21 @@ namespace Local_Api2.Models
                 {
                     perc = 100*(((double)this.QuantityFromFoil - (double)this.QuantityFromBoxes) / (double)this.QuantityFromBoxes);
                     if(perc < 0) { perc = 0; }
+                    if(perc > 100) { perc = 100; }
                 }
                 return perc;
+            }
+        }
+        public double? AssumedFoilLossPercentage { get; set; } = null;
+        public double? FoilLossPercentageDiff
+        {
+            get
+            {
+                if (AssumedFoilLossPercentage == null)
+                {
+                    return null;
+                }
+                return AssumedFoilLossPercentage - FoilLossPercentage;
             }
         }
         public int Speed
