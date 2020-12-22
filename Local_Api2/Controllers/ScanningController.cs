@@ -60,6 +60,7 @@ namespace Local_Api2.Controllers
                         int prevProduct = -1;
                         int currentProduct = 0;
                         string MachineName = "";
+                        string MachineNumber = "";
                         if (reader.HasRows)
                         {
                             try
@@ -69,7 +70,7 @@ namespace Local_Api2.Controllers
                                     if (index == 0)
                                     {
                                         MachineName = reader["MACHINE_NR"].ToString();
-                                        MachineName = MachineName.Substring(MachineName.Length - 2, 2);
+                                        MachineNumber = MachineName.Substring(MachineName.Length - 2, 2);
                                     }
                                     index++;
                                     currentHour = Convert.ToInt32(reader[reader.GetOrdinal("SCAN_HOUR")].ToString());
@@ -89,6 +90,7 @@ namespace Local_Api2.Controllers
                                     i.GE = ((double)i.Quantity / (double)max_efficiency)*100;
                                     i.Zfin = currentProduct;
                                     i.NetWeight = Convert.ToDouble(reader[reader.GetOrdinal("WEIGHT_NETTO")].ToString());
+                                    i.MachineName = MachineName;
                                     if (currentHour == prevHour)
                                     {
                                         i.ChangeOvers = 1;
@@ -197,7 +199,7 @@ namespace Local_Api2.Controllers
                             }
                             using(SqlConnection XRayConn = new SqlConnection(Static.Secrets.xRayConnectionString))
                             {
-                                using (var readerD = Utilities.GetRecentXrayData(MachineName, XRayConn))
+                                using (var readerD = Utilities.GetRecentXrayData(MachineNumber, XRayConn))
                                 {
                                     if (readerD.HasRows)
                                     {

@@ -93,5 +93,6 @@ namespace Local_Api2.Models
         public double GE { get; set; }
         public double NetWeight { get; set; }
         public int BoxCount { get; set; }
+        public string MachineName { get; set; }
     }
 }
