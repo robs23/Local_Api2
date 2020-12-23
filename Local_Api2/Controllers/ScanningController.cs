@@ -1,6 +1,7 @@
 ﻿using Local_Api2.Models;
 using Local_Api2.Static;
 using NLog;
+using Npgsql;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
@@ -265,6 +266,13 @@ namespace Local_Api2.Controllers
                                     }
                                 }
                             }
+                            using(NpgsqlConnection FenixConnection = new NpgsqlConnection(Static.Secrets.FenixConnectionString))
+                            {
+                                using(var readerF = GetRecentOverweights(MachineId, FenixConnection))
+                                {
+
+                                }
+                            }
 
                             Logger.Info("GetRecentScans: Sukces, zwracam {count} skanów dla maszyny {MachineId}", Scans.Count, MachineId);
                             return Ok(Scans);
@@ -353,6 +361,19 @@ namespace Local_Api2.Controllers
             var reader = Command.ExecuteReader();
             Logger.Debug("GetRecentFoilsScans finished");
 
+            return reader;
+        }
+
+        private NpgsqlDataReader GetRecentOverweights(int MachineId, NpgsqlConnection Con)
+        {
+            if (Con.State == System.Data.ConnectionState.Closed)
+            {
+                Con.Open();
+            }
+            string str = $@"";
+
+            var Command = new NpgsqlCommand(str, Con);
+            var reader = Command.ExecuteReader();
             return reader;
         }
     }
