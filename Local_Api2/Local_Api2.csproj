@@ -221,6 +221,7 @@
     <Compile Include="Areas\HelpPage\SampleGeneration\TextSample.cs" />
     <Compile Include="Areas\HelpPage\XmlDocumentationProvider.cs" />
     <Compile Include="Controllers\BomController.cs" />
+    <Compile Include="Controllers\DividerController.cs" />
     <Compile Include="Controllers\FormController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\MachinesController.cs" />
@@ -233,7 +234,9 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Models\BomItem.cs" />
+    <Compile Include="Models\DividerItem.cs" />
     <Compile Include="Models\Form.cs" />
+    <Compile Include="Models\LocationAmount.cs" />
     <Compile Include="Models\Machine.cs" />
     <Compile Include="Models\Packaging.cs" />
     <Compile Include="Models\Process.cs" />
