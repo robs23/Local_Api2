@@ -229,6 +229,7 @@
     <Compile Include="Controllers\ScanningController.cs" />
     <Compile Include="Controllers\TpmImportController.cs" />
     <Compile Include="Controllers\ValuesController.cs" />
+    <Compile Include="Controllers\WarehouseEntryController.cs" />
     <Compile Include="Controllers\XrayDataController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -243,6 +244,9 @@
     <Compile Include="Models\Product.cs" />
     <Compile Include="Models\ProductionRecord.cs" />
     <Compile Include="Models\ScanningItem.cs" />
+    <Compile Include="Models\Shipment.cs" />
+    <Compile Include="Models\ShipmentItem.cs" />
+    <Compile Include="Models\WarehouseEntry.cs" />
     <Compile Include="Models\XRayDataRecord.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Static\RuntimeSettings.cs" />
