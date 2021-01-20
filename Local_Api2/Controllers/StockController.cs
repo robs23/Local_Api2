@@ -8,10 +8,12 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using System.Web.Http.Cors;
 using System.Web.Http.Description;
 
 namespace Local_Api2.Controllers
 {
+    [EnableCors(origins: "*", headers: "*", methods: "*")]
     public class StockController : ApiController
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();

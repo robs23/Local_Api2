@@ -1,4 +1,5 @@
 ﻿using Local_Api2.Models;
+using Local_Api2.Static;
 using NLog;
 using Oracle.ManagedDataAccess.Client;
 using System;
@@ -7,10 +8,12 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using System.Web.Http.Cors;
 using System.Web.Http.Description;
 
 namespace Local_Api2.Controllers
 {
+    [EnableCors(origins: "*", headers: "*", methods: "*")]
     public class WarehouseEntryController : ApiController
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
@@ -31,7 +34,16 @@ namespace Local_Api2.Controllers
 
                     if (query == null)
                     {
-                        query = "(pi.C_DATE >= '2021-01-14')";
+                        query = $"(pi.C_DATE >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}')";
+                    }
+                    else
+                    {
+                        if (!query.Contains("C_DATE"))
+                        {
+                            //make sure start date is always indicated
+                            //otherwise we can crash the db
+                            query += $" AND (pi.C_DATE >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}') ";
+                        }
                     }
 
                     string str = $@"SELECT pr.PRODUCT_NR, s.SERIAL_NR, pi.PRODUCTION_ID, pi.LOADUNIT_ID, pi.LOADUNIT_NR, pi.PRODUCT_ID, pi.DATE_PROD, pi.QUANTITY, pi.WEIGHT, pi.LENGTH, pi.WIDTH, pi.HEIGHT, pi.STATUS, pi.C_DATE, pi.LM_DATE

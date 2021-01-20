@@ -1,4 +1,6 @@
 ﻿using Local_Api2.Models;
+using Local_Api2.Static;
+using Microsoft.ApplicationInsights.Web;
 using NLog;
 using Oracle.ManagedDataAccess.Client;
 using System;
@@ -7,10 +9,12 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using System.Web.Http.Cors;
 using System.Web.Http.Description;
 
 namespace Local_Api2.Controllers
 {
+    [EnableCors(origins: "*", headers: "*", methods: "*")]
     public class ShipmentController : ApiController
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
@@ -31,7 +35,14 @@ namespace Local_Api2.Controllers
 
                     if (query == null && DeliveryNote == null)
                     {
-                        query = $"(d.DATE_EMITTED >= '{DateTime.Now.AddDays(-7).ToString("yyyy-MM-dd")}')";
+                        query = $"(d.DATE_EMITTED >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}')";
+                    }
+                    else if(query != null)
+                    {
+                        if (!query.Contains("DATE_EMITTED"))
+                        {
+                            query += $" AND (d.DATE_EMITTED >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}')";
+                        }
                     }
 
                     if(DeliveryNote != null)
