@@ -266,13 +266,13 @@ namespace Local_Api2.Controllers
                                     }
                                 }
                             }
-                            using(NpgsqlConnection FenixConnection = new NpgsqlConnection(Static.Secrets.FenixConnectionString))
-                            {
-                                using(var readerF = GetRecentOverweights(MachineId, FenixConnection))
-                                {
+                            //using(NpgsqlConnection FenixConnection = new NpgsqlConnection(Static.Secrets.FenixConnectionString))
+                            //{
+                            //    using(var readerF = GetRecentOverweights(MachineId, FenixConnection))
+                            //    {
 
-                                }
-                            }
+                            //    }
+                            //}
 
                             Logger.Info("GetRecentScans: Sukces, zwracam {count} skanów dla maszyny {MachineId}", Scans.Count, MachineId);
                             return Ok(Scans);

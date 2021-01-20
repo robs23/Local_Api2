@@ -77,5 +77,57 @@ namespace Local_Api2.Controllers
             }
 
         }
+
+        [HttpGet]
+        [Route("GetDefaultDestinations")]
+        [ResponseType(typeof(List<DividerItem>))]
+        public IHttpActionResult GetDefaultDestinations()
+        {
+            try
+            {
+                List<DividerItem> Items = new List<DividerItem>();
+
+                using (SqlConnection npdConnection = new SqlConnection(Static.Secrets.NpdConnectionString))
+                {
+                    string sql = $@"SELECT z.zfinIndex, cs.location 
+                                  FROM tbZfin z LEFT JOIN tbCustomerString cs ON cs.custStringId = z.custString 
+                                  WHERE z.custString IS NOT NULL AND prodStatus = 'PR'";
+
+                    SqlCommand command = new SqlCommand(sql, npdConnection);
+                    if (npdConnection.State == ConnectionState.Closed || npdConnection.State == ConnectionState.Broken)
+                    {
+                        npdConnection.Open();
+                    }
+                    SqlDataReader reader = command.ExecuteReader();
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            DividerItem d = new DividerItem();
+                            d.ZfinIndex = Convert.ToInt64(reader["zfinIndex"].ToString());
+                            d.Locations = new List<LocationAmount>();
+                            LocationAmount la = new LocationAmount();
+                            la.L = reader["location"].ToString().Trim();
+                            la.Amount = 0;
+                            d.Locations.Add(la);
+                            Items.Add(d);
+                            
+
+                        }
+                        return Ok(Items);
+                    }
+                    else
+                    {
+                        return NotFound();
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError(ex);
+            }
+
+        }
     }
 }

@@ -42,14 +42,14 @@ namespace Local_Api2.Controllers
                             //otherwise we can crash the db
                             query += $" AND (sp.START_DATE >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}') ";
                         }
-                        query = $"(op.OPERATION_TYPE_ID = 11) AND (uom.LEVEL_NR = 0) AND (o2p.ACTION = 'TO_DO') AND {query}";
+                        query = $"(op.OPERATION_TYPE_ID = 11) AND (uom.LEVEL_NR = 0) AND (uomPal.LEVEL_NR = 3) AND (o2p.ACTION = 'TO_DO') AND {query}";
                     }
                     else
                     {
-                        query = $"(op.OPERATION_TYPE_ID = 11) AND (uom.LEVEL_NR = 0) AND (o2p.ACTION = 'TO_DO') AND (sp.START_DATE >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}')";
+                        query = $"(op.OPERATION_TYPE_ID = 11) AND (uom.LEVEL_NR = 0) AND (uomPal.LEVEL_NR = 3) AND (o2p.ACTION = 'TO_DO') AND (sp.START_DATE >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}')";
                     }
 
-                    string str = $@"SELECT sp.SCHEDULING_ID, sp.START_DATE, sp.STOP_DATE, sp.MACHINE_ID, m.MACHINE_NAME, ord.ORDER_NR, op.OPERATION_NR, pr.PRODUCT_ID, pr.PRODUCT_NR, pr.NAME, o2p.QUANTITY, (uom.WEIGHT_NETTO * o2p.QUANTITY) AS WEIGHT 
+                    string str = $@"SELECT sp.SCHEDULING_ID, sp.START_DATE, sp.STOP_DATE, sp.MACHINE_ID, m.MACHINE_NAME, ord.ORDER_NR, op.OPERATION_NR, pr.PRODUCT_ID, pr.PRODUCT_NR, pr.NAME, o2p.QUANTITY, (uom.WEIGHT_NETTO * o2p.QUANTITY) AS WEIGHT, (o2p.QUANTITY / uomPal.BU_QUANTITY) AS PAL
                                     FROM QMES_EJS_SCHEDULING_POSITION sp 
                                     LEFT JOIN QMES_FO_MACHINE m ON m.MACHINE_ID = sp.MACHINE_ID LEFT OUTER JOIN 
                                     QMES_WIP_OPERATION op ON op.OPERATION_ID = sp.OPERATION_ID LEFT OUTER JOIN
@@ -58,7 +58,8 @@ namespace Local_Api2.Controllers
                                     QCM_PRODUCTS pr ON pr.PRODUCT_ID = o2p.PRODUCT_ID LEFT OUTER JOIN
                                     QCM_PACKAGE_HEADERS pack ON pack.PRODUCT_ID = pr.PRODUCT_ID LEFT OUTER JOIN
                                     QMES_WIP_ORDER2PRODUCT o2p ON o2p.OPERATION_ID = sp.OPERATION_ID AND o2p.PRODUCT_ID = pr.PRODUCT_ID LEFT OUTER JOIN 
-                                    QCM_PACKAGE_LEVELS uom ON uom.PACKAGE_ID = pack.PACKAGE_ID 
+                                    QCM_PACKAGE_LEVELS uom ON uom.PACKAGE_ID = pack.PACKAGE_ID LEFT OUTER JOIN 
+                                    QCM_PACKAGE_LEVELS uomPal ON uomPal.PACKAGE_ID = pack.PACKAGE_ID 
                                     WHERE {query} 
                                     ORDER BY sp.START_DATE";
                     
@@ -86,6 +87,7 @@ namespace Local_Api2.Controllers
                             p.NAME = reader["NAME"].ToString();
                             p.QUANTITY = Convert.ToInt64(reader["QUANTITY"].ToString());
                             p.WEIGHT = Convert.ToDouble(reader["WEIGHT"].ToString());
+                            p.PAL = Convert.ToDouble(reader["PAL"].ToString());
                             Plan.Add(p);
                         }
                         return Ok(Plan);
