@@ -5,17 +5,17 @@ using System.Web;
 
 namespace Local_Api2.Models
 {
-    public class ShipmentItem
+    public class StockPallet
     {
-        public long DOC_ID { get; set; }
-        public long DOC_ITEM_ID { get; set; }
+        public string LOADUNIT_NR { get; set; }
+        public string SP_NR { get; set; }
         public long PRODUCT_ID { get; set; }
         public string PRODUCT_NR { get; set; }
         public string NAME { get; set; }
-        public long PROD_SERIAL_ID { get; set; }
         public string SERIAL_NR { get; set; }
-        public long QUANTITY { get; set; }
-        public double WEIGHT { get; set; }
-        public double WEIGHT_NETTO { get; set; }
+        public DateTime DATE_EXPIRE { get; set; }
+        public long BU_QUANTITY { get; set; }
+        public int STATUS_QUALITY { get; set; }
+        public DateTime C_DATE { get; set; }
     }
 }

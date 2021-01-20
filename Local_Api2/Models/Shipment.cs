@@ -16,5 +16,8 @@ namespace Local_Api2.Models
         public string ADR_ZIPCODE { get; set; }
         public string ADR_CITY { get; set; }
         public string C_ORDER_NR { get; set; }
+        public double WEIGHT_NETTO { get; set; }
+        public double WEIGHT { get; set; }
+        public List<ShipmentItem> Items { get; set; }
     }
 }
