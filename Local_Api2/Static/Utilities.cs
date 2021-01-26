@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using Local_Api2.Models;
+using NLog;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
@@ -89,6 +90,145 @@ namespace Local_Api2.Static
             }
             SqlDataReader reader = command.ExecuteReader();
             return reader;
+        }
+
+        public static List<DividerItem> GetDivider(int week, int year)
+        {
+            try
+            {
+                List<DividerItem> Items = new List<DividerItem>();
+
+                using (SqlConnection npdConnection = new SqlConnection(Static.Secrets.NpdConnectionString))
+                {
+                    string sql = $@"SELECT z.zfinIndex, d.* FROM tbDivider d
+                                    LEFT JOIN tbZfin z ON z.zfinId = d.ProductId 
+                                    WHERE Week = {week} AND Year = {year}";
+
+                    SqlCommand command = new SqlCommand(sql, npdConnection);
+                    if (npdConnection.State == ConnectionState.Closed || npdConnection.State == ConnectionState.Broken)
+                    {
+                        npdConnection.Open();
+                    }
+                    SqlDataReader reader = command.ExecuteReader();
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            long zfinIndex = Convert.ToInt64(reader["zfinIndex"].ToString());
+                            DividerItem d;
+                            LocationAmount la = new LocationAmount();
+                            la.L = reader["L"].ToString();
+                            la.Amount = Convert.ToInt32(reader["Amount"].ToString());
+                            if (Items.Any(i => i.ZfinIndex == zfinIndex))
+                            {
+                                //there's already this product row in collection, append it
+                                d = Items.FirstOrDefault(i => i.ZfinIndex == zfinIndex);
+                                d.Locations.Add(la);
+                            }
+                            else
+                            {
+                                //there is not this product yet, let's add it
+                                d = new DividerItem();
+                                d.ZfinIndex = Convert.ToInt64(reader["zfinIndex"].ToString());
+                                d.Locations = new List<LocationAmount>();
+                                d.Locations.Add(la);
+                                Items.Add(d);
+                            }
+
+                        }
+                    }
+                    return Items;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        public static List<DividerItem> GetDefaultDestinations()
+        {
+            try
+            {
+                List<DividerItem> Items = new List<DividerItem>();
+
+                using (SqlConnection npdConnection = new SqlConnection(Static.Secrets.NpdConnectionString))
+                {
+                    string sql = $@"SELECT z.zfinIndex, cs.location 
+                                  FROM tbZfin z LEFT JOIN tbCustomerString cs ON cs.custStringId = z.custString 
+                                  WHERE z.custString IS NOT NULL AND prodStatus = 'PR'";
+
+                    SqlCommand command = new SqlCommand(sql, npdConnection);
+                    if (npdConnection.State == ConnectionState.Closed || npdConnection.State == ConnectionState.Broken)
+                    {
+                        npdConnection.Open();
+                    }
+                    SqlDataReader reader = command.ExecuteReader();
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            DividerItem d = new DividerItem();
+                            d.ZfinIndex = Convert.ToInt64(reader["zfinIndex"].ToString());
+                            d.Locations = new List<LocationAmount>();
+                            LocationAmount la = new LocationAmount();
+                            la.L = reader["location"].ToString().Trim();
+                            la.Amount = 0;
+                            d.Locations.Add(la);
+                            Items.Add(d);
+
+
+                        }
+                    }
+                    return Items;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        public static List<ProductMachineEfficiency> GetProductMachineEfficiencies(string ProductIds = null)
+        {
+            List<ProductMachineEfficiency> Items = new List<ProductMachineEfficiency>();
+
+            try
+            {
+                using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.OracleConnectionString))
+                {
+                    if (Con.State == System.Data.ConnectionState.Closed)
+                    {
+                        Con.Open();
+                    }
+                    string sql = $@"SELECT PRODUCT_ID, MACHINE_ID, CAST(EFFICIENCY AS INT) AS EFFICIENCY, CAST(MAX_EFFICIENCY AS INT) AS MAX_EFFICIENCY FROM QMES_FO_MACHINE_EFFICIENCY";
+                    if (!string.IsNullOrEmpty(ProductIds))
+                    {
+                        sql += $" WHERE PRODUCT_ID IN({ ProductIds})";
+                    }
+
+                    var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(sql, Con);
+
+                    var reader = Command.ExecuteReader();
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            ProductMachineEfficiency ef = new ProductMachineEfficiency();
+                            ef.PRODUCT_ID = Convert.ToInt32(reader["PRODUCT_ID"].ToString());
+                            ef.MACHINE_ID = Convert.ToInt32(reader["MACHINE_ID"].ToString());
+                            ef.EFFICIENCY = Convert.ToInt32(reader["EFFICIENCY"].ToString());
+                            ef.MAX_EFFICIENCY = Convert.ToInt32(reader["MAX_EFFICIENCY"].ToString());
+                            Items.Add(ef);
+                        }
+                    }
+                }
+                return Items;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         public static DateTime GetStartDate()

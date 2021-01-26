@@ -27,6 +27,68 @@ namespace Local_Api2.Controllers
             try
             {
 
+                List<ProductionPlanItem> Items = _GetProductionPlan(query);
+                if (Items.Any())
+                {
+                    return Ok(Items);
+                }
+                else
+                {
+                    return NotFound();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("GetProductionPlan: Błąd. Szczegóły: {Message}", ex.ToString());
+                return InternalServerError(ex);
+            }
+        }
+
+        [HttpGet]
+        [Route("GetProductionPlanByDestinations")]
+        [ResponseType(typeof(List<ProductionPlanItem>))]
+        public IHttpActionResult GetProductionPlanByDestinations(string query = null)
+        {
+            try
+            {
+                List<ProductionPlanItem> Items = _GetProductionPlan(query);
+                if (Items.Any())
+                {
+                    List<DividerKeeper> Dividers = new List<DividerKeeper>();
+                    List<DividerItem> DefaultDestinations = Utilities.GetDefaultDestinations();
+                    
+                    DateTime start = Items.Min(i => i.START_DATE);
+                    DateTime stop = Items.Max(i => i.STOP_DATE);
+                    TimeSpan span = stop - start;
+                    string ProductIds = string.Join(",", Items.Select(i => i.PRODUCT_ID).ToList().Distinct());
+                    ProductMachineEfficiencyKeeper EfficiencyKeeper = new ProductMachineEfficiencyKeeper();
+                    EfficiencyKeeper.Items = Utilities.GetProductMachineEfficiencies(ProductIds);
+                    List<Location> Locations = new List<Location>();
+                    foreach(ProductionPlanItem i in Items)
+                    {
+                        //for each operation
+                        //get how to allocate it
+
+                    }
+                }
+                else
+                {
+                    return NotFound();
+                }
+            }
+            catch (Exception ex)
+            {
+
+                Logger.Error("GetProductionPlanByDestinations: Błąd. Szczegóły: {Message}", ex.ToString());
+                return InternalServerError(ex);
+            }
+            
+        }
+
+        private List<ProductionPlanItem> _GetProductionPlan(string query = null)
+        {
+            try
+            {
                 using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.OracleConnectionString))
                 {
                     if (Con.State == System.Data.ConnectionState.Closed)
@@ -62,13 +124,15 @@ namespace Local_Api2.Controllers
                                     QCM_PACKAGE_LEVELS uomPal ON uomPal.PACKAGE_ID = pack.PACKAGE_ID 
                                     WHERE {query} 
                                     ORDER BY sp.START_DATE";
-                    
+
 
                     var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
 
                     var reader = Command.ExecuteReader();
 
                     List<ProductionPlanItem> Plan = new List<ProductionPlanItem>();
+
+                    double pal;
 
                     if (reader.HasRows)
                     {
@@ -87,22 +151,36 @@ namespace Local_Api2.Controllers
                             p.NAME = reader["NAME"].ToString();
                             p.QUANTITY = Convert.ToInt64(reader["QUANTITY"].ToString());
                             p.WEIGHT = Convert.ToDouble(reader["WEIGHT"].ToString());
-                            p.PAL = Convert.ToDouble(reader["PAL"].ToString());
+                            try
+                            {
+                                if (double.TryParse(reader["PAL"].ToString(), out pal))
+                                {
+                                    p.PAL = Convert.ToDouble(reader["PAL"].ToString());
+                                }
+                                else
+                                {
+                                    p.PAL = 0;
+                                    p.PalText = reader["PAL"].ToString();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                p.PAL = 0;
+                            }
+
                             Plan.Add(p);
                         }
-                        return Ok(Plan);
                     }
                     else
                     {
-                        Logger.Info($"GetProductionPlan: brak danych dla tych kryteriów: {query}");
-                        return NotFound();
+
                     }
+                    return Plan;
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error("GetProductionPlan: Błąd. Szczegóły: {Message}", ex.ToString());
-                return InternalServerError(ex);
+                throw;
             }
         }
     }

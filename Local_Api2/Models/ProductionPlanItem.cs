@@ -20,6 +20,7 @@ namespace Local_Api2.Models
         public long QUANTITY { get; set; }
         public double WEIGHT { get; set; }
         public double PAL { get; set; }
+        public string PalText { get; set; }
 
     }
 }

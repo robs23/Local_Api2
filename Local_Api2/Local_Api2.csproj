@@ -239,7 +239,9 @@
     </Compile>
     <Compile Include="Models\BomItem.cs" />
     <Compile Include="Models\DividerItem.cs" />
+    <Compile Include="Models\DividerKeeper.cs" />
     <Compile Include="Models\Form.cs" />
+    <Compile Include="Models\Location.cs" />
     <Compile Include="Models\LocationAmount.cs" />
     <Compile Include="Models\Machine.cs" />
     <Compile Include="Models\Packaging.cs" />
@@ -247,6 +249,8 @@
     <Compile Include="Models\Product.cs" />
     <Compile Include="Models\ProductionPlanItem.cs" />
     <Compile Include="Models\ProductionRecord.cs" />
+    <Compile Include="Models\ProductMachineEfficiency.cs" />
+    <Compile Include="Models\ProductMachineEfficiencyKeeper.cs" />
     <Compile Include="Models\ScanningItem.cs" />
     <Compile Include="Models\Shipment.cs" />
     <Compile Include="Models\ShipmentItem.cs" />
@@ -298,6 +302,7 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="Properties\PublishProfiles\MES_API.pubxml" />
+    <None Include="Properties\PublishProfiles\mes_api_test.pubxml" />
     <None Include="Properties\PublishProfiles\Prod.pubxml" />
     <None Include="Properties\PublishProfiles\test.pubxml" />
     <None Include="Scripts\jquery-3.3.1.intellisense.js" />
