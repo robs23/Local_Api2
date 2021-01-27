@@ -9,5 +9,9 @@ namespace Local_Api2.Models
     {
         public string L { get; set; }
         public List<ProductionPlanItem> Parts { get; set; } // parts of productionPlanItem = parts of production operations
+        public Location()
+        {
+            Parts = new List<ProductionPlanItem>();
+        }
     }
 }

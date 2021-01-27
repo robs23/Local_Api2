@@ -13,9 +13,9 @@ namespace Local_Api2.Models
             Items = new List<ProductMachineEfficiency>();
         }
 
-        public int? Amount2Minutes(int MachineId, int ProductId, int Amount)
+        public long? Amount2Minutes(int MachineId, long ProductId, long Amount)
         {
-            int? res = null;
+            long? res = null;
 
             ProductMachineEfficiency ef = Items.FirstOrDefault(i => i.MACHINE_ID == MachineId && i.PRODUCT_ID == ProductId);
             if (ef != null)

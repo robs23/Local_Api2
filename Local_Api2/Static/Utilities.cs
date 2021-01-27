@@ -114,7 +114,7 @@ namespace Local_Api2.Static
                     {
                         while (reader.Read())
                         {
-                            long zfinIndex = Convert.ToInt64(reader["zfinIndex"].ToString());
+                            string zfinIndex = reader["zfinIndex"].ToString();
                             DividerItem d;
                             LocationAmount la = new LocationAmount();
                             la.L = reader["L"].ToString();
@@ -129,7 +129,7 @@ namespace Local_Api2.Static
                             {
                                 //there is not this product yet, let's add it
                                 d = new DividerItem();
-                                d.ZfinIndex = Convert.ToInt64(reader["zfinIndex"].ToString());
+                                d.ZfinIndex = reader["zfinIndex"].ToString();
                                 d.Locations = new List<LocationAmount>();
                                 d.Locations.Add(la);
                                 Items.Add(d);
@@ -169,7 +169,7 @@ namespace Local_Api2.Static
                         while (reader.Read())
                         {
                             DividerItem d = new DividerItem();
-                            d.ZfinIndex = Convert.ToInt64(reader["zfinIndex"].ToString());
+                            d.ZfinIndex = reader["zfinIndex"].ToString();
                             d.Locations = new List<LocationAmount>();
                             LocationAmount la = new LocationAmount();
                             la.L = reader["location"].ToString().Trim();

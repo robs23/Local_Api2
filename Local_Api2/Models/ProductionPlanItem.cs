@@ -8,6 +8,10 @@ namespace Local_Api2.Models
     public class ProductionPlanItem
     {
         public int SCHEDULING_ID { get; set; }
+        public DateTime BEGIN_DATE { get; set; }
+        public DateTime END_DATE { get; set; }
+        public int WEEK { get; set; }
+        public int YEAR { get; set; }
         public DateTime START_DATE { get; set; }
         public DateTime STOP_DATE { get; set; }
         public int MACHINE_ID { get; set; }
