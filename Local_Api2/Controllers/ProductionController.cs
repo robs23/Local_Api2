@@ -100,9 +100,27 @@ namespace Local_Api2.Controllers
 
                         if (currDiv.Items.Any(x=>x.ZfinIndex == i.PRODUCT_NR))
                         {
-                            foreach(LocationAmount la in currDiv.Items.FirstOrDefault(x => x.ZfinIndex == i.PRODUCT_NR).Locations)
+                            
+                        }
+                        else
+                        {
+                            //this product hasn't been found in divider for week X
+                            //check futher weeks, maybe it's in week X+1
+                            currDiv = null;
+                            foreach(DividerKeeper dk in Dividers.Where(d=>(d.Week > i.WEEK && d.Year == i.YEAR) || (d.Week < i.WEEK && d.Year > i.YEAR)))
                             {
-                                if(i.QUANTITY > 0)
+                                if(dk.Items.Any(y=>y.ZfinIndex== i.PRODUCT_NR))
+                                {
+                                    //it's in divider for next week
+                                    currDiv = dk;
+                                }
+                            }
+                        }
+                        if(currDiv != null)
+                        {
+                            foreach (LocationAmount la in currDiv.Items.FirstOrDefault(x => x.ZfinIndex == i.PRODUCT_NR).Locations)
+                            {
+                                if (i.QUANTITY > 0)
                                 {
                                     //if there's nothing left to allocate in this operation, go to next operation
                                     if (la.Amount > 0)
@@ -137,7 +155,7 @@ namespace Local_Api2.Controllers
                                             //as we don't consume the whole operation,
                                             //we must adjust the REMAINING & CONSUMED parts (stop date, quantity, etc)
                                             long? minutesTaken = EfficiencyKeeper.Amount2Minutes(i.MACHINE_ID, i.PRODUCT_ID, p.QUANTITY);
-                                            if(minutesTaken != null)
+                                            if (minutesTaken != null)
                                             {
                                                 //we have the efficiency set in MES
                                                 p.STOP_DATE = p.START_DATE.AddMinutes((double)minutesTaken);
@@ -145,10 +163,13 @@ namespace Local_Api2.Controllers
                                             }
 
                                         }
+                                        p.LOCATION = la.L;
+                                        p.DIVIDER_WEEK = currDiv.Week;
+                                        p.DIVIDER_YEAR = currDiv.Year;
                                         currLoc.Parts.Add(p); // add this part to operations for this location
                                     }
                                 }
-                                
+
                             }
                         }
 
@@ -187,13 +208,13 @@ namespace Local_Api2.Controllers
                         {
                             //make sure start date is always indicated
                             //otherwise we can crash the db
-                            query += $" AND (sp.START_DATE >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}') ";
+                            query += $" AND (sp.START_DATE >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}') AND (ss.STATUS = 'CO') AND (op.STATUS <> 'RG')";
                         }
-                        query = $"(op.OPERATION_TYPE_ID = 11) AND (uom.LEVEL_NR = 0) AND (uomPal.LEVEL_NR = 3) AND (o2p.ACTION = 'TO_DO') AND {query}";
+                        query = $"(op.OPERATION_TYPE_ID = 11) AND (uom.LEVEL_NR = 0) AND (uomPal.LEVEL_NR = 3) AND (o2p.ACTION = 'TO_DO') AND (ss.STATUS = 'CO') AND (op.STATUS <> 'RG') AND {query}";
                     }
                     else
                     {
-                        query = $"(op.OPERATION_TYPE_ID = 11) AND (uom.LEVEL_NR = 0) AND (uomPal.LEVEL_NR = 3) AND (o2p.ACTION = 'TO_DO') AND (sp.START_DATE >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}')";
+                        query = $"(op.OPERATION_TYPE_ID = 11) AND (uom.LEVEL_NR = 0) AND (uomPal.LEVEL_NR = 3) AND (o2p.ACTION = 'TO_DO') AND (ss.STATUS = 'CO') AND (op.STATUS <> 'RG') AND (sp.START_DATE >= '{DateTime.Now.StartOfWeek().ToString("yyyy-MM-dd HH:mm:ss")}')";
                     }
 
                     string str = $@"SELECT sp.SCHEDULING_ID, ss.BEGIN_DATE, ss.END_DATE, sp.START_DATE, sp.STOP_DATE, sp.MACHINE_ID, m.MACHINE_NAME, ord.ORDER_NR, op.OPERATION_NR, pr.PRODUCT_ID, pr.PRODUCT_NR, pr.NAME, o2p.QUANTITY, (uom.WEIGHT_NETTO * o2p.QUANTITY) AS WEIGHT, (o2p.QUANTITY / uomPal.BU_QUANTITY) AS PAL
@@ -248,7 +269,6 @@ namespace Local_Api2.Controllers
                                 else
                                 {
                                     p.PAL = 0;
-                                    p.PalText = reader["PAL"].ToString();
                                 }
                             }
                             catch (Exception ex)
