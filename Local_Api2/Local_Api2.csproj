@@ -254,9 +254,11 @@
     <Compile Include="Models\ScanningItem.cs" />
     <Compile Include="Models\Session.cs" />
     <Compile Include="Models\Shipment.cs" />
+    <Compile Include="Models\ShipmentGroup.cs" />
     <Compile Include="Models\ShipmentItem.cs" />
     <Compile Include="Models\StockPallet.cs" />
     <Compile Include="Models\StockProduct.cs" />
+    <Compile Include="Models\VirtualTruck.cs" />
     <Compile Include="Models\WarehouseEntry.cs" />
     <Compile Include="Models\XRayDataRecord.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

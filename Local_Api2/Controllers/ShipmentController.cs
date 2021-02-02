@@ -123,5 +123,29 @@ namespace Local_Api2.Controllers
                 return InternalServerError(ex);
             }
         }
+
+        [HttpGet]
+        [Route("GetShipmentGroups")]
+        [ResponseType(typeof(List<ShipmentGroup>))]
+        public IHttpActionResult GetShipmentGroups()
+        {
+            try
+            {
+                List<ShipmentGroup> Items = Utilities.GetShipmentGroups();
+                if (Items.Any())
+                {
+                    return Ok(Items);
+                }
+                else
+                {
+                    return NotFound();
+                }
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError(ex);
+            }
+
+        }
     }
 }
