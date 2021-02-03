@@ -17,6 +17,23 @@ namespace Local_Api2.Static
             return mon.AddHours(-2);
         }
 
+        public static DateTime ClosestFriday(this DateTime dt)
+        {
+            DateTime nextFriday = dt;
+
+            //calculates the closest friday after dt date
+            for (int i = 0; i < 8; i++)
+            {
+                if(dt.AddDays(i).DayOfWeek == DayOfWeek.Friday)
+                {
+                    //we've found next friday
+                    nextFriday = dt.AddDays(i);
+                    break;
+                }
+            }
+            return nextFriday;
+        }
+
         public static int IsoWeekOfYear(this DateTime time)
         {
             DayOfWeek day = CultureInfo.InvariantCulture.Calendar.GetDayOfWeek(time);

@@ -13,6 +13,7 @@ namespace Local_Api2.Models
         public DateTime ProductionStart { get; set; }
         public DateTime ProductionEnd { get; set; }
         public double TotalPallets { get; set; }
+        public double PalletsBeforeWeekend { get; set; }
 
         public List<ProductionPlanItem> Parts { get; set; } // parts of productionPlanItem = parts of production operations
         public Location()

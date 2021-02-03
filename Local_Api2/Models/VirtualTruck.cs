@@ -8,14 +8,35 @@ namespace Local_Api2.Models
     public class VirtualTruck
     {
         public string L { get; set; }
-        public List<Location> Locations { get; set; }
+        public List<ProductionPlanItem> Parts { get; set; }
         public DateTime ProductionStart { get; set; }
         public DateTime ProductionEnd { get; set; }
-        public int TotalPallets { get; set; }
+        public double TotalPallets { get; set; } = 0;
+
+        public double Pallets2Full
+        {
+            get
+            {
+                if(TotalPallets >= 33)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return 33 - TotalPallets;
+                }
+            }
+        }
 
         public VirtualTruck()
         {
-            Locations = new List<Location>();
+            Parts = new List<ProductionPlanItem>();
+        }
+
+        public void Compose()
+        {
+            ProductionStart = Parts.Min(p => p.BEGIN_DATE);
+            ProductionEnd = Parts.Max(p => p.END_DATE);
         }
     }
 }

@@ -80,9 +80,78 @@ namespace Local_Api2.Controllers
             try
             {
                 List<Location> Items = Utilities.GetProductionPlanByCountry(query);
+                List<ShipmentGroup> ShipmentGroups = Utilities.GetShipmentGroups();
+                List<VirtualTruck> Trucks = new List<VirtualTruck>();
+
                 if (Items.Any())
                 {
-                    return Ok(Items);
+                    ProductMachineEfficiencyKeeper EfficiencyKeeper = new ProductMachineEfficiencyKeeper();
+                    EfficiencyKeeper.Items = Utilities.GetProductMachineEfficiencies();
+
+                    //let's create first truck
+                    VirtualTruck currTruck = null;
+
+                    foreach(Location currLoc in Items.OrderBy(i => i.TotalPallets))
+                    {
+                        //let's plan trucks starting from those locations, that have the fewest pallets
+                        foreach(ProductionPlanItem p in currLoc.Parts.OrderBy(p => p.END_DATE))
+                        {
+                            while(p.PAL > 0)
+                            {
+                                //while this order hasn't been consumed
+                                if (currTruck != null)
+                                {
+                                    if (currTruck.Pallets2Full == 0)
+                                    {
+                                        //we can't add any pallet to current truck
+                                        currTruck.Compose();
+                                        Trucks.Add(currTruck);
+                                        currTruck = null;
+                                    }
+                                }
+
+                                if (currTruck == null)
+                                {
+                                    //we have to create new truck
+                                    currTruck = new VirtualTruck();
+                                    currTruck.L = p.LOCATION;
+                                }
+                                double palletCount = p.QUANTITY / p.PAL;
+
+                                ProductionPlanItem pi = new ProductionPlanItem();
+                                pi = p.CloneJson();
+
+                                if (p.PAL < currTruck.Pallets2Full)
+                                {
+                                    currTruck.Parts.Add(pi);
+                                    currTruck.TotalPallets += p.PAL;
+                                    p.PAL = 0;
+                                    p.QUANTITY = 0;
+                                }
+                                else
+                                {
+                                    //part of this operation will go to current truck and part will go to next truck
+                                    pi.PAL = currTruck.Pallets2Full;
+                                    pi.QUANTITY = Convert.ToInt64(pi.PAL * palletCount);
+                                    currTruck.Parts.Add(pi);
+                                    //as we don't consume the whole operation,
+                                    //we must adjust the REMAINING & CONSUMED parts (stop date, quantity, etc)
+                                    p.PAL -= pi.PAL; //subtract pallets you've taken
+                                    p.QUANTITY -= pi.QUANTITY;
+                                    long? minutesTaken = EfficiencyKeeper.Amount2Minutes(pi.MACHINE_ID, pi.PRODUCT_ID, pi.QUANTITY);
+                                    if (minutesTaken != null)
+                                    {
+                                        //we have the efficiency set in MES
+                                        pi.STOP_DATE = pi.START_DATE.AddMinutes((double)minutesTaken);
+                                        p.START_DATE = pi.STOP_DATE; //stop date of this part is beginning of next part
+                                    }
+                                }
+                            }
+                            
+                        }
+                    }
+
+                    return Ok(Trucks);
                 }
                 else
                 {
