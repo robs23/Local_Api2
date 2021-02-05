@@ -90,20 +90,34 @@ namespace Local_Api2.Controllers
 
                     //let's create first truck
                     VirtualTruck currTruck = null;
+                    int counter = 0;
 
                     foreach(Location currLoc in Items.OrderBy(i => i.TotalPallets))
                     {
+                        Logger.Info("Lokacja: {loc}", currLoc.L);
                         //let's plan trucks starting from those locations, that have the fewest pallets
+
+                        if(currTruck != null)
+                        {
+                            //location has changed. each location to have separate truck for now
+                            Logger.Info("Dodaje samochód do lokacji: {L}, palet: {pal}", currTruck.L, currTruck.TotalPallets);
+                            currTruck.Compose();
+                            Trucks.Add(currTruck);
+                            currTruck = null;
+                        }
                         foreach(ProductionPlanItem p in currLoc.Parts.OrderBy(p => p.END_DATE))
                         {
-                            while(p.PAL > 0)
+                            counter = 0;
+                            while(p.PAL > 0.9 && counter < 10)
                             {
+                                Logger.Info("Operacja: {op}, przejście: {counter}", p.OPERATION_NR, counter);
                                 //while this order hasn't been consumed
                                 if (currTruck != null)
                                 {
                                     if (currTruck.Pallets2Full == 0)
                                     {
                                         //we can't add any pallet to current truck
+                                        Logger.Info("Dodaje samochód do lokacji: {L}, palet: {pal}", currTruck.L, currTruck.TotalPallets);
                                         currTruck.Compose();
                                         Trucks.Add(currTruck);
                                         currTruck = null;
@@ -113,6 +127,7 @@ namespace Local_Api2.Controllers
                                 if (currTruck == null)
                                 {
                                     //we have to create new truck
+                                    Logger.Info("Nowe auto do: {L}", p.LOCATION);
                                     currTruck = new VirtualTruck();
                                     currTruck.L = p.LOCATION;
                                 }
@@ -121,6 +136,7 @@ namespace Local_Api2.Controllers
                                 ProductionPlanItem pi = new ProductionPlanItem();
                                 pi = p.CloneJson();
 
+                                Logger.Info("Ilość palet w operacji: {op}, pozostało na aucie: {rem}", p.PAL, currTruck.Pallets2Full);
                                 if (p.PAL < currTruck.Pallets2Full)
                                 {
                                     currTruck.Parts.Add(pi);
@@ -133,6 +149,7 @@ namespace Local_Api2.Controllers
                                     //part of this operation will go to current truck and part will go to next truck
                                     pi.PAL = currTruck.Pallets2Full;
                                     pi.QUANTITY = Convert.ToInt64(pi.PAL * palletCount);
+                                    currTruck.TotalPallets += pi.PAL;
                                     currTruck.Parts.Add(pi);
                                     //as we don't consume the whole operation,
                                     //we must adjust the REMAINING & CONSUMED parts (stop date, quantity, etc)
@@ -146,6 +163,7 @@ namespace Local_Api2.Controllers
                                         p.START_DATE = pi.STOP_DATE; //stop date of this part is beginning of next part
                                     }
                                 }
+                                counter++;
                             }
                             
                         }

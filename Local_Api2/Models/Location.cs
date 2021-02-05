@@ -23,9 +23,12 @@ namespace Local_Api2.Models
 
         public void Compose()
         {
-            ProductionStart = Parts.Min(p => p.BEGIN_DATE);
-            ProductionEnd = Parts.Max(p => p.END_DATE);
-            TotalPallets = Parts.Sum(p => p.PAL);
+            if (Parts.Any())
+            {
+                ProductionStart = Parts.Min(p => p.BEGIN_DATE);
+                ProductionEnd = Parts.Max(p => p.END_DATE);
+                TotalPallets = Parts.Sum(p => p.PAL);
+            }            
         }
     }
 }
