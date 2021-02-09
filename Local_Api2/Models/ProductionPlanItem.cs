@@ -27,6 +27,7 @@ namespace Local_Api2.Models
         public string LOCATION { get; set; }
         public int DIVIDER_WEEK { get; set; }
         public int DIVIDER_YEAR { get; set; }
+        public string STATUS { get; set; }
 
     }
 }
