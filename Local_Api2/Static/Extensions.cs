@@ -46,6 +46,7 @@ namespace Local_Api2.Static
             return CultureInfo.InvariantCulture.Calendar.GetWeekOfYear(time, CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
         }
 
+
         public static T CloneJson<T>(this T source)
         {
             // Don't serialize a null object, simply return the default for that object
