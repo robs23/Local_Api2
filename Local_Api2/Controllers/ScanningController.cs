@@ -49,7 +49,7 @@ namespace Local_Api2.Controllers
                 }
                 else
                 {
-                    using(OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.OracleConnectionString))
+                    using(OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString))
                     {
                         Logger.Debug("GetRecentScans has started");
                         var reader = GetRecentFoilScans(MachineId, Con);

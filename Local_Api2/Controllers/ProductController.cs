@@ -15,7 +15,7 @@ namespace Local_Api2.Controllers
     [EnableCors(origins: "*", headers: "*", methods: "*")]
     public class ProductController : ApiController
     {
-        private OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.OracleConnectionString);
+        private OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString);
 
         [HttpGet]
         [Route("GetRecentProducts")]
@@ -26,7 +26,7 @@ namespace Local_Api2.Controllers
             try
             {
                 List<ProductionRecord> Records = new List<ProductionRecord>();
-                using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.OracleConnectionString))
+                using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString))
                 {
                     using (var reader = Utilities.GetRecentProductData(MachineId, Con))
                     {

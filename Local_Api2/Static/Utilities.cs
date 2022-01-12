@@ -244,7 +244,7 @@ namespace Local_Api2.Static
 
             try
             {
-                using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.OracleConnectionString))
+                using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString))
                 {
                     if (Con.State == System.Data.ConnectionState.Closed)
                     {
@@ -476,7 +476,7 @@ namespace Local_Api2.Static
         {
             try
             {
-                using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.OracleConnectionString))
+                using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString))
                 {
                     if (Con.State == System.Data.ConnectionState.Closed)
                     {
