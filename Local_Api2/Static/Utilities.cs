@@ -8,6 +8,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Web;
 
 namespace Local_Api2.Static
