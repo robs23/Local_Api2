@@ -1,5 +1,6 @@
 ﻿using Local_Api2.Models;
 using Local_Api2.Static;
+using Newtonsoft.Json;
 using NLog;
 using Oracle.ManagedDataAccess.Client;
 using System;
@@ -11,6 +12,7 @@ using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Cors;
 using System.Web.Http.Description;
@@ -51,13 +53,13 @@ namespace Local_Api2.Controllers
         [HttpGet]
         [Route("GetPlannedComponentsSchedule")]
 
-        public IHttpActionResult GetPlannedComponentsSchedule(string query = null)
+        public async Task<IHttpActionResult> GetPlannedComponentsSchedule(string query = null)
         {
             try
             {
                 List<PlannedComponent> Plan = new List<PlannedComponent>();
                 Plan = _GetPlannedComponents(query);
-
+                //Plan = await _GetPlannedComponentsRemote(query);
                 if (Plan.Any())
                 {
                     var schedule = Plan.GroupBy(x => new { x.OPERATION_DAY, x.SHIFT_ID, x.SHIFT_NAME, x.PRODUCT_NR, x.PRODUCT_NAME, x.SUB_PROD_TYPE }).Select(s => new
@@ -70,8 +72,8 @@ namespace Local_Api2.Controllers
                         SUB_PROD_TYPE = s.Key.SUB_PROD_TYPE,
                         PRODUCT_QUANTITY = s.Sum(y=>y.PRODUCT_QUANTITY)
                     });
-                    var columns = schedule.GroupBy(d => d.OPEATION_DAY).Select(g => g.Key);
-                    var rows = schedule.GroupBy(d => new { d.PRODUCT_NR, d.PRODUCT_NAME, d.SUB_PROD_TYPE }).Select(g => new
+                    var columnHeaders = schedule.GroupBy(d => d.OPEATION_DAY).Select(g => g.Key);
+                    var rowHeaders = schedule.GroupBy(d => new { d.PRODUCT_NR, d.PRODUCT_NAME, d.SUB_PROD_TYPE }).Select(g => new
                     {
                         PRODUCT_NR = g.Key.PRODUCT_NR,
                         PRODUCT_NAME = g.Key.PRODUCT_NAME,
@@ -80,19 +82,20 @@ namespace Local_Api2.Controllers
 
 
                     var table = new DataTable();
-                    foreach(var c in columns)
+                    //add columns  for product
+                    table.Columns.Add("Produkt");
+                    table.Columns.Add("Nazwa");
+                    table.Columns.Add("Typ");
+
+                    foreach (var c in columnHeaders)
                     {
-                        //add columns  for product
-                        table.Columns.Add("Produkt");
-                        table.Columns.Add("Nazwa");
-                        table.Columns.Add("Typ");
                         //for all 3 shifts each day
-                        table.Columns.Add(c.ToString() + "__1");
-                        table.Columns.Add(c.ToString() + "__2");
-                        table.Columns.Add(c.ToString() + "__3");
+                        table.Columns.Add(c.ToString("yyyy-MM-dd") + "__1");
+                        table.Columns.Add(c.ToString("yyyy-MM-dd") + "__2");
+                        table.Columns.Add(c.ToString("yyyy-MM-dd") + "__3");
                     }
 
-                    foreach(var r in rows)
+                    foreach(var r in rowHeaders)
                     {
                         string productNr = r.PRODUCT_NR;
                         bool colSet = false;
@@ -118,16 +121,20 @@ namespace Local_Api2.Controllers
                                         SHIFT_ID = x.Key,
                                         PRODUCT_QUANTITY = x.Sum(y => y.PRODUCT_QUANTITY)
                                     });
-                                    var shift_1 = shifts.Where(s => s.SHIFT_ID == 1).Select(q => q.PRODUCT_QUANTITY);
-                                    var shift_2 = shifts.Where(s => s.SHIFT_ID == 2).Select(q => q.PRODUCT_QUANTITY);
-                                    var shift_3 = shifts.Where(s => s.SHIFT_ID == 3).Select(q => q.PRODUCT_QUANTITY);
+                                    var shift = schedule.Where(s => s.OPEATION_DAY == date && s.PRODUCT_NR == productNr && s.SHIFT_ID == Convert.ToInt32(splits[1])).Sum(g => g.PRODUCT_QUANTITY);
+                                    row[col.Ordinal] = shift;
                                 }
                             }
                             
                         }
+                        table.Rows.Add(row);
+                    }
+                    if(table.Rows.Count == 0)
+                    {
+                        return NotFound();
                     }
 
-                    return (Ok(schedule));
+                    return (Ok(table));
                 }
                 else
                 {
@@ -215,6 +222,34 @@ namespace Local_Api2.Controllers
             catch (Exception ex)
             {
                 Logger.Error("_GetPlannedComponents: Błąd. Szczegóły: {Message}", ex.ToString());
+                throw;
+            }
+        }
+
+        private async Task<List<PlannedComponent>> _GetPlannedComponentsRemote(string query = null)
+        {
+            try
+            {
+                List<PlannedComponent> vItems = new List<PlannedComponent>();
+
+                using (var client = new HttpClient())
+                {
+                    string url = $"{Secrets.MesApi}/GetPlannedComponents";
+
+                    using (var response = await client.GetAsync(new Uri(url)))
+                    {
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var userJsonString = await response.Content.ReadAsStringAsync();
+                            vItems = JsonConvert.DeserializeObject<PlannedComponent[]>(userJsonString).ToList();
+                        }
+                        return vItems;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("_GetPlannedComponentsRemote: Błąd. Szczegóły: {Message}", ex.ToString());
                 throw;
             }
         }
