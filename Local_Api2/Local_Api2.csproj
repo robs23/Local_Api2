@@ -226,6 +226,8 @@
     <Compile Include="Controllers\FormController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\MachinesController.cs" />
+    <Compile Include="Models\DeliveryItem.cs" />
+    <Compile Include="Models\InventorySnapshot.cs" />
     <Compile Include="Models\PlannedComponent.cs" />
     <Compile Include="Controllers\ProductController.cs" />
     <Compile Include="Controllers\ProductionController.cs" />

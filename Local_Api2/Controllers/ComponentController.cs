@@ -6,6 +6,7 @@ using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.SqlClient;
 using System.Drawing.Imaging;
 using System.Linq;
 using System.Net;
@@ -253,5 +254,192 @@ namespace Local_Api2.Controllers
                 throw;
             }
         }
+
+        [HttpGet]
+        [Route("GetInventorySnapshots")]
+        [ResponseType(typeof(List<InventorySnapshot>))]
+        public async Task<IHttpActionResult> GetInventorySnapshots(string query = null)
+        {
+            try
+            {
+                List<InventorySnapshot> Items = new List<InventorySnapshot>();
+                Items = await _GetInventorySnapshots(query);
+
+                if (Items.Any())
+                {
+                    return (Ok(Items));
+                }
+                else
+                {
+                    return NotFound();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("GetInventorySnapshots: Błąd. Szczegóły: {Message}", ex.ToString());
+                return InternalServerError(ex);
+            }
+        }
+
+        private async Task<List<InventorySnapshot>> _GetInventorySnapshots(string query = null)
+        {
+            try
+            {
+                List<InventorySnapshot> Inventories = new List<InventorySnapshot>();
+
+                using (SqlConnection Con = new SqlConnection(Static.Secrets.NpdConnectionString))
+                {
+                    if (Con.State == System.Data.ConnectionState.Closed)
+                    {
+                        Con.Open();
+                    }
+
+                    //make sure takenOn date is always indicated
+                    //it should default to last inventory snapshot taken on date
+                    if (query != null)
+                    {
+                        if (!query.Contains("TakenOn"))
+                        {
+                            query += $" AND (TakenOn = (SELECT TOP(1) TakenOn FROM tbInventorySnapshots ORDER BY TakenOn DESC))";
+                        }
+                    }
+                    else
+                    {
+                        query = $"(TakenOn = (SELECT TOP(1) TakenOn FROM tbInventorySnapshots ORDER BY TakenOn DESC))";
+                    }
+
+                    string str = $@"SELECT z.zfinIndex, z.zfinName, i.*
+                                FROM tbInventorySnapshots i LEFT JOIN tbZfin z ON z.zfinId=i.ProductId
+                                WHERE {query}";
+
+
+                    var Command = new SqlCommand(str, Con);
+
+                    var reader = Command.ExecuteReader();
+
+
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            InventorySnapshot i = new InventorySnapshot();
+                            i.InventorySnapshotId = Convert.ToInt32(reader["InventorySnapshotId"].ToString());
+                            i.ProductId = Convert.ToInt32(reader["ProductId"].ToString());
+                            i.ProductIndex = reader["ZfinIndex"].ToString();
+                            i.ProductName = reader["ZfinName"].ToString();
+                            i.Size = Convert.ToDouble(reader["Size"].ToString());
+                            i.Unit = reader["Unit"].ToString();
+                            i.Status = reader["Status"].ToString();
+                            i.TakenOn = Convert.ToDateTime(reader["TakenOn"].ToString());
+                            Inventories.Add(i);
+                        }
+                    }
+
+                    return Inventories;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("_GetInventorySnapshots: Błąd. Szczegóły: {Message}", ex.ToString());
+                throw;
+            }
+        }
+
+        [HttpGet]
+        [Route("GetDeliveryItems")]
+        [ResponseType(typeof(List<InventorySnapshot>))]
+        public async Task<IHttpActionResult> GetDeliveryItems(string query = null)
+        {
+            try
+            {
+                List<DeliveryItem> Items = new List<DeliveryItem>();
+                Items = await _GetDeliveryItems(query);
+
+                if (Items.Any())
+                {
+                    return (Ok(Items));
+                }
+                else
+                {
+                    return NotFound();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("GetDeliveryItems: Błąd. Szczegóły: {Message}", ex.ToString());
+                return InternalServerError(ex);
+            }
+        }
+
+        private async Task<List<DeliveryItem>> _GetDeliveryItems(string query = null)
+        {
+            try
+            {
+                List<DeliveryItem> Items = new List<DeliveryItem>();
+
+                using (SqlConnection Con = new SqlConnection(Static.Secrets.NpdConnectionString))
+                {
+                    if (Con.State == System.Data.ConnectionState.Closed)
+                    {
+                        Con.Open();
+                    }
+
+                    //make sure CreatedOn date is always indicated
+                    //it should default to last deliveryItem CreatedOn date
+                    if (query != null)
+                    {
+                        if (!query.Contains("CreatedOn"))
+                        {
+                            query += $" AND (CreatedOn = (SELECT TOP(1) CreatedOn FROM tbDeliveryItems ORDER BY CreatedOn DESC))";
+                        }
+                    }
+                    else
+                    {
+                        query = $"(CreatedOn = (SELECT TOP(1) CreatedOn FROM tbDeliveryItems ORDER BY CreatedOn DESC))";
+                    }
+
+                    string str = $@"SELECT z.zfinIndex, z.zfinName, d.*
+                                FROM tbDeliveryItems d LEFT JOIN tbZfin z ON z.zfinId=d.ProductId
+                                WHERE {query}";
+
+
+                    var Command = new SqlCommand(str, Con);
+
+                    var reader = Command.ExecuteReader();
+
+
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            DeliveryItem i = new DeliveryItem();
+                            i.DeliveryItemId = Convert.ToInt32(reader["DeliveryItemId"].ToString());
+                            i.ProductId = Convert.ToInt32(reader["ProductId"].ToString());
+                            i.ProductIndex = reader["ZfinIndex"].ToString();
+                            i.ProductName = reader["ZfinName"].ToString();
+                            i.DocumentDate = Convert.ToDateTime(reader["DocumentDate"].ToString());
+                            i.PurchaseOrder = reader["DocumentDate"].ToString();
+                            i.OrderQuantity = Convert.ToDouble(reader["OrderQuantity"].ToString());
+                            i.OpenQuantity = Convert.ToDouble(reader["OpenQuantity"].ToString());
+                            i.ReceivedQuantity = Convert.ToDouble(reader["ReceivedQuantity"].ToString());
+                            i.NetPrice = Convert.ToDouble(reader["NetPrice"].ToString());
+                            i.DeliveryDate = Convert.ToDateTime(reader["DeliveryDate"].ToString());
+                            i.Vendor = reader["Vendor"].ToString();
+                            i.CreatedOn = Convert.ToDateTime(reader["CreatedOn"].ToString());
+                            Items.Add(i);
+                        }
+                    }
+
+                    return Items;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("_GetDeliveryItems: Błąd. Szczegóły: {Message}", ex.ToString());
+                throw;
+            }
+        }
+
     }
+
 }
