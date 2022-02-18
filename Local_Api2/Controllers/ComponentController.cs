@@ -263,7 +263,20 @@ namespace Local_Api2.Controllers
             try
             {
                 List<InventorySnapshot> Items = new List<InventorySnapshot>();
-                Items = await _GetInventorySnapshots(query);
+                List<InventorySnapshot> ZcomItems = new List<InventorySnapshot>();
+
+                Task<List<InventorySnapshot>> zpkgTask = Task.Run(() => _GetInventorySnapshots(query));
+                Task<List<InventorySnapshot>> zcomTask = Task.Run(() => _GetZComInventorySnapshots());
+
+                await Task.WhenAll(zpkgTask, zcomTask);
+                
+                Items = await zpkgTask;
+                ZcomItems = await zcomTask;
+
+                if (ZcomItems.Any())
+                {
+                    Items.AddRange(ZcomItems);
+                }
 
                 if (Items.Any())
                 {
@@ -344,6 +357,59 @@ namespace Local_Api2.Controllers
                 throw;
             }
         }
+        private async Task<List<InventorySnapshot>> _GetZComInventorySnapshots()
+        {
+            try
+            {
+                List<InventorySnapshot> Inventories = new List<InventorySnapshot>();
+
+                using (SqlConnection Con = new SqlConnection(Static.Secrets.ScadaConnectionString))
+                {
+                    if (Con.State == System.Data.ConnectionState.Closed)
+                    {
+                        Con.Open();
+                    }
+
+
+                    string str = $@"SELECT s.IDSKLADNIK as Id, s.MaterialNumber as Number, s.NAZWASKLADNIKA as Name, SUM(z.ILOSC_W_ZBIORNIKU) as Size
+                                    FROM ZBIORNIKI z 
+	                                    LEFT JOIN SKLADNIKI s ON s.IDSKLADNIK=z.IDSKLADNIK
+                                    WHERE s.MaterialNumber IS NOT NULL 
+                                    GROUP BY s.IDSKLADNIK, s.MaterialNumber, s.NAZWASKLADNIKA";
+
+
+                    var Command = new SqlCommand(str, Con);
+
+                    var reader = Command.ExecuteReader();
+
+
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            InventorySnapshot i = new InventorySnapshot();
+                            i.InventorySnapshotId = 0;
+                            i.ProductId = Convert.ToInt32(reader["Id"].ToString());
+                            i.ProductIndex = reader["Number"].ToString();
+                            i.ProductName = reader["Name"].ToString();
+                            i.Size = Math.Round(Convert.ToDouble(reader["Size"].ToString()));
+                            i.Unit = "KG";
+                            i.Status = "U";
+                            i.TakenOn = DateTime.Now;
+                            Inventories.Add(i);
+                        }
+                    }
+
+                    return Inventories;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("_GetZComInventorySnapshots: Błąd. Szczegóły: {Message}", ex.ToString());
+                throw;
+            }
+        }
+
 
         [HttpGet]
         [Route("GetDeliveryItems")]
