@@ -28,12 +28,12 @@ namespace Local_Api2.Controllers
         [HttpGet]
         [Route("GetPlannedComponents")]
         [ResponseType(typeof(List<PlannedComponent>))]
-        public IHttpActionResult GetPlannedComponents(string query = null)
+        public async Task<IHttpActionResult> GetPlannedComponents(string query = null)
         {
             try
             {
                 List<PlannedComponent> Plan = new List<PlannedComponent>();
-                Plan = _GetPlannedComponents(query);
+                Plan = await _GetPlannedComponents(query);
 
                 if (Plan.Any())
                 {
@@ -59,7 +59,13 @@ namespace Local_Api2.Controllers
             try
             {
                 List<PlannedComponent> Plan = new List<PlannedComponent>();
-                Plan = _GetPlannedComponents(query);
+                List<Operation2Product> Operations = new List<Operation2Product>();
+
+                Plan = await _GetPlannedComponents(query);
+                string operationNumbers = string.Join(",", Plan.Select(g=>g.OPERATION_NR).Distinct().Select(p => p.Insert(0, "'").Insert(p.Length+1, "'")));
+
+                Operations = await _GetOperation2Product(operationNumbers);
+
                 //Plan = await _GetPlannedComponentsRemote(query);
                 if (Plan.Any())
                 {
@@ -150,7 +156,7 @@ namespace Local_Api2.Controllers
         }
 
 
-        private List<PlannedComponent> _GetPlannedComponents(string query = null)
+        private async Task<List<PlannedComponent>> _GetPlannedComponents(string query = null)
         {
             try
             {
@@ -223,6 +229,59 @@ namespace Local_Api2.Controllers
             catch (Exception ex)
             {
                 Logger.Error("_GetPlannedComponents: Błąd. Szczegóły: {Message}", ex.ToString());
+                throw;
+            }
+        }
+
+        private async Task<List<Operation2Product>> _GetOperation2Product(string operationNumbers)
+        {
+            try
+            {
+                using (OracleConnection Con = new Oracle.ManagedDataAccess.Client.OracleConnection(Static.Secrets.ApiConnectionString))
+                {
+                    if (Con.State == System.Data.ConnectionState.Closed)
+                    {
+                        Con.Open();
+                    }
+
+                    string str = $@"SELECT DISTINCT op.OPERATION_ID, op.OPERATION_NR, pr.PRODUCT_ID, pr.PRODUCT_NR, pr.SUB_PROD_TYPE
+                                    FROM QMES_WIP_OPERATION op LEFT OUTER JOIN
+                                         QMES_WIP_ORDER2PRODUCT o2p ON o2p.OPERATION_ID = op.OPERATION_ID LEFT OUTER JOIN
+                                         QCM_PRODUCTS pr ON pr.PRODUCT_ID = o2p.PRODUCT_ID
+                                    WHERE (op.OPERATION_NR IN ({operationNumbers})) AND (pr.SUB_PROD_TYPE IN ('WR', 'PP'))
+                                    ORDER BY op.OPERATION_ID, pr.SUB_PROD_TYPE DESC";
+
+
+                    var Command = new Oracle.ManagedDataAccess.Client.OracleCommand(str, Con);
+
+                    var reader = Command.ExecuteReader();
+
+                    List<Operation2Product> Items = new List<Operation2Product>();
+
+
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            Operation2Product o = new Operation2Product();
+                            o.OPERATION_ID = Convert.ToInt32(reader["OPERATION_ID"].ToString());
+                            o.OPERATION_NR = reader["OPERATION_NR"].ToString();
+                            o.PRODUCT_ID = Convert.ToInt32(reader["PRODUCT_ID"].ToString());
+                            o.PRODUCT_NR = reader["PRODUCT_NR"].ToString();
+                            o.SUB_PROD_TYPE = reader["SUB_PROD_TYPE"].ToString();
+
+                            Items.Add(o);
+                        }
+                    }
+                    else
+                    {
+
+                    }
+                    return Items;
+                }
+            }
+            catch (Exception ex)
+            {
                 throw;
             }
         }
