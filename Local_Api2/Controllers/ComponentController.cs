@@ -28,12 +28,32 @@ namespace Local_Api2.Controllers
         [HttpGet]
         [Route("GetPlannedComponents")]
         [ResponseType(typeof(List<PlannedComponent>))]
-        public async Task<IHttpActionResult> GetPlannedComponents(string query = null)
+        public async Task<IHttpActionResult> GetPlannedComponents(string query = null, bool withParents = false)
         {
             try
             {
                 List<PlannedComponent> Plan = new List<PlannedComponent>();
                 Plan = await _GetPlannedComponents(query);
+
+                if (withParents)
+                {
+                    //if withParents, got to fetch appropriate Operation2Products containing parent info
+                    //and merge it with Plan
+                    List<Operation2Product> Operations = new List<Operation2Product>();
+                    //var cursed = Plan.Where(p => p.OPERATION_NR.Contains("#"));
+                    //if (cursed.Any())
+                    //{
+                    //    Plan.RemoveAll(o => o.OPERATION_NR.Contains("#"));
+                    //    Plan = Plan.Take(200).ToList();
+                    //}
+                    string operationNumbers = string.Join(",", Plan.Select(g => g.OPERATION_NR).Distinct().Select(p => p.Insert(0, "'").Insert(p.Length + 1, "'")));
+                    Operations = await _GetOperation2Product(operationNumbers);
+                    if (Operations.Any())
+                    {
+                        MergePlanAndOperation2Products(Plan, Operations);
+                    }
+                }
+                
 
                 if (Plan.Any())
                 {
@@ -51,6 +71,27 @@ namespace Local_Api2.Controllers
             }
         }
 
+        private static void MergePlanAndOperation2Products(List<PlannedComponent> Plan, List<Operation2Product> Operations)
+        {
+            foreach (Operation2Product op in Operations)
+            {
+                var MatchingPlanItems = Plan.Where(p => p.OPERATION_NR == op.OPERATION_NR);
+                if (MatchingPlanItems.Any())
+                {
+                    foreach (PlannedComponent item in MatchingPlanItems)
+                    {
+                        if(item.PARENT_NR == null)
+                        {
+                            item.PARENT_NR = "";
+                        }
+
+                        item.PARENT_NR += op.PRODUCT_NR + " ";
+
+                    }
+                }
+            }
+        }
+
         [HttpGet]
         [Route("GetPlannedComponentsSchedule")]
 
@@ -59,12 +100,8 @@ namespace Local_Api2.Controllers
             try
             {
                 List<PlannedComponent> Plan = new List<PlannedComponent>();
-                List<Operation2Product> Operations = new List<Operation2Product>();
 
                 Plan = await _GetPlannedComponents(query);
-                string operationNumbers = string.Join(",", Plan.Select(g=>g.OPERATION_NR).Distinct().Select(p => p.Insert(0, "'").Insert(p.Length+1, "'")));
-
-                Operations = await _GetOperation2Product(operationNumbers);
 
                 //Plan = await _GetPlannedComponentsRemote(query);
                 if (Plan.Any())
@@ -233,6 +270,33 @@ namespace Local_Api2.Controllers
             }
         }
 
+        [HttpGet]
+        [Route("GetOperation2Product")]
+        [ResponseType(typeof(List<Operation2Product>))]
+        public async Task<IHttpActionResult> GetOperation2Product(string operationNumbers)
+        {
+            try
+            {
+                List<Operation2Product> Items = new List<Operation2Product>();
+                Items = await _GetOperation2Product(operationNumbers);
+
+                if (Items.Any())
+                {
+                    return (Ok(Items));
+                }
+                else
+                {
+                    return NotFound();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("GetOperation2Product: Błąd. Szczegóły: {Message}", ex.ToString());
+                return InternalServerError(ex);
+            }
+        }
+
+
         private async Task<List<Operation2Product>> _GetOperation2Product(string operationNumbers)
         {
             try
@@ -286,6 +350,33 @@ namespace Local_Api2.Controllers
             }
         }
 
+        private async Task<List<Operation2Product>> _GetOperation2ProductRemote(string operationNumbers)
+        {
+            try
+            {
+                List<Operation2Product> vItems = new List<Operation2Product>();
+
+                using (var client = new HttpClient())
+                {
+                    string url = $"{Secrets.MesApi}/GetOperation2Product?operationNumbers={operationNumbers}";
+                    using (var response = await client.GetAsync(new Uri(url)))
+                    {
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var userJsonString = await response.Content.ReadAsStringAsync();
+                            vItems = JsonConvert.DeserializeObject<Operation2Product[]>(userJsonString).ToList();
+                        }
+                        return vItems;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("_GetOperation2ProductRemote: Błąd. Szczegóły: {Message}", ex.ToString());
+                throw;
+            }
+        }
+
         private async Task<List<PlannedComponent>> _GetPlannedComponentsRemote(string query = null)
         {
             try
@@ -295,6 +386,10 @@ namespace Local_Api2.Controllers
                 using (var client = new HttpClient())
                 {
                     string url = $"{Secrets.MesApi}/GetPlannedComponents";
+                    if(query != null)
+                    {
+                        url += $"?query={query}";
+                    }
 
                     using (var response = await client.GetAsync(new Uri(url)))
                     {

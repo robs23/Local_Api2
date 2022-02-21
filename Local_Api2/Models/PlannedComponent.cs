@@ -26,5 +26,6 @@ namespace Local_Api2.Controllers
         public string BOM_NR {get; set;} 
         public long PRODUCT_QUANTITY {get; set;} 
         public long PRODUCT_QUANTITY_ALL {get; set;}
+        public string PARENT_NR { get; set; }
     }
 }
