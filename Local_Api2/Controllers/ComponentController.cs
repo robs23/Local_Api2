@@ -638,7 +638,7 @@ namespace Local_Api2.Controllers
                             i.ProductIndex = reader["ZfinIndex"].ToString();
                             i.ProductName = reader["ZfinName"].ToString();
                             i.DocumentDate = Convert.ToDateTime(reader["DocumentDate"].ToString());
-                            i.PurchaseOrder = reader["DocumentDate"].ToString();
+                            i.PurchaseOrder = reader["PurchaseOrder"].ToString();
                             i.OrderQuantity = Convert.ToDouble(reader["OrderQuantity"].ToString());
                             i.OpenQuantity = Convert.ToDouble(reader["OpenQuantity"].ToString());
                             i.ReceivedQuantity = Convert.ToDouble(reader["ReceivedQuantity"].ToString());
